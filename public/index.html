@@ -121,7 +121,6 @@ textarea.form-control{resize:vertical;min-height:80px}
         <button class="login-btn" @click="doLogin" :disabled="!loginForm.username||!loginForm.password||logging">登 录</button>
         <p v-if="loginError" class="login-error">{{ loginError }}</p>
         <div class="login-toggle">还没有账号？<a @click="loginMode='register'">注册账号</a></div>
-        <div class="login-footer">默认管理员：admin / admin123</div>
       </template>
       <template v-else>
         <h1>📝 注册账号</h1>
