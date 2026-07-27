@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>缺陷管理系统</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#4f46e5;--primary-light:#6366f1;--primary-dark:#4338ca;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--info:#3b82f6;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#64748b;--sidebar-bg:#1e293b;--sidebar-text:#cbd5e1;--sidebar-active:#4f46e5;--radius:8px;--shadow:0 1px 3px rgba(0,0,0,.1)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+.login-card{background:#fff;border-radius:16px;padding:40px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-card h1{text-align:center;margin-bottom:8px;font-size:24px}
+.login-card .subtitle{text-align:center;color:var(--text2);font-size:14px;margin-bottom:32px}
+.login-card .form-group{margin-bottom:18px}
+.login-card label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+.login-card input,.login-card select{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;transition:.2s}
+.login-card input:focus,.login-card select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+.login-btn{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;margin-top:8px}
+.login-btn:hover{background:var(--primary-dark)}.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-error{color:var(--danger);font-size:13px;text-align:center;margin-top:12px}
+.login-footer{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
+.login-footer a{color:var(--primary);cursor:pointer;text-decoration:none;font-weight:500}
+.login-toggle{text-align:center;margin-top:16px;font-size:13px;color:var(--text2)}
+.login-toggle a{color:var(--primary);cursor:pointer;font-weight:500}
+.app-layout{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--sidebar-bg);color:var(--sidebar-text);flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.sidebar-header{padding:20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-header h1{font-size:18px;color:#fff;font-weight:700}
+.sidebar-header p{font-size:12px;color:var(--sidebar-text);margin-top:2px}
+.sidebar-nav{flex:1;padding:12px 0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;padding:10px 20px;cursor:pointer;transition:all .15s;font-size:14px;gap:10px;color:var(--sidebar-text);user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:var(--sidebar-active);color:#fff;font-weight:600}
+.nav-icon{width:20px;text-align:center;font-size:16px;flex-shrink:0}
+.sidebar-footer{padding:12px 20px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
+.sidebar-footer .user-avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+.sidebar-footer .user-info{flex:1;overflow:hidden}
+.sidebar-footer .user-name{font-size:13px;color:#fff;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-footer .user-role{font-size:11px;color:var(--sidebar-text)}
+.logout-btn{background:none;border:none;color:var(--sidebar-text);cursor:pointer;font-size:16px;padding:4px;border-radius:4px;transition:.2s}
+.logout-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
+.main-content{flex:1;margin-left:220px;padding:24px;min-height:100vh}
+.page-header{margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.page-header h2{font-size:22px;font-weight:700}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;display:flex;align-items:center;gap:16px}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}.stat-icon.green{background:#d1fae5;color:#059669}.stat-icon.orange{background:#fef3c7;color:#d97706}.stat-icon.red{background:#fee2e2;color:#dc2626}.stat-icon.purple{background:#ede9fe;color:#7c3aed}.stat-icon.teal{background:#ccfbf1;color:#0d9488}
+.stat-info h3{font-size:24px;font-weight:700}.stat-info p{font-size:13px;color:var(--text2)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#059669}
+.btn-warning{background:var(--warning);color:#fff}.btn-warning:hover{background:#d97706}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-info{background:var(--info);color:#fff}.btn-info:hover{background:#2563eb}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{background:#f8fafc}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap}
+.table-wrapper{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f8fafc;padding:10px 12px;text-align:left;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--border)}
+tr:hover td{background:#f8fafc}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.badge-success{background:#d1fae5;color:#065f46}.badge-warning{background:#fef3c7;color:#92400e}.badge-danger{background:#fee2e2;color:#991b1b}.badge-info{background:#dbeafe;color:#1e40af}.badge-secondary{background:#f1f5f9;color:#475569}.badge-purple{background:#ede9fe;color:#5b21b6}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+.form-control{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;transition:.2s;background:#fff;color:var(--text)}
+.form-control:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+select.form-control{appearance:auto}
+textarea.form-control{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.modal{background:var(--card);border-radius:12px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px rgba(0,0,0,.25)}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{font-size:16px;font-weight:700}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);padding:4px;line-height:1}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:20px}
+.modal-footer{padding:16px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.search-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.search-bar .form-control{max-width:240px}
+.flow-container{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:8px 0}
+.flow-node{padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500;background:#f1f5f9;border:1px solid var(--border)}
+.flow-arrow{color:var(--text2);font-size:14px}
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--border)}
+.timeline-item{position:relative;margin-bottom:16px}
+.timeline-item::before{content:'';position:absolute;left:-20px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--primary);border:2px solid #fff;box-shadow:0 0 0 2px var(--primary)}
+.timeline-item .time{font-size:11px;color:var(--text2)}
+.timeline-item .content{font-size:13px}
+.empty-state{text-align:center;padding:40px;color:var(--text2)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:11px;margin:1px}
+.pagination{display:flex;justify-content:center;gap:4px;margin-top:16px}
+.pagination button{padding:6px 12px;border:1px solid var(--border);background:#fff;border-radius:4px;cursor:pointer;font-size:12px}
+.pagination button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.pagination button:disabled{opacity:.5;cursor:not-allowed}
+.toast{position:fixed;top:20px;right:20px;z-index:2000;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .3s ease}
+.toast-success{background:var(--success)}.toast-error{background:var(--danger)}.toast-info{background:var(--info)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;z-index:3000;font-size:16px;color:var(--text)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div v-if="loading" class="loading-overlay">加载中...</div>
+  <div v-if="toast.show" :class="'toast toast-'+toast.type">{{ toast.msg }}</div>
+
+  <!-- LOGIN -->
+  <div v-if="!isLoggedIn" class="login-page">
+    <div class="login-card">
+      <template v-if="!loginMode">
+        <h1>🐛 DefectPro</h1>
+        <p class="subtitle">缺陷管理系统 · 请登录</p>
+        <div class="form-group"><label>账号</label><input v-model="loginForm.username" placeholder="请输入账号" @keyup.enter="doLogin"></div>
+        <div class="form-group"><label>密码</label><input type="password" v-model="loginForm.password" placeholder="请输入密码" @keyup.enter="doLogin"></div>
+        <button class="login-btn" @click="doLogin" :disabled="!loginForm.username||!loginForm.password||logging">登 录</button>
+        <p v-if="loginError" class="login-error">{{ loginError }}</p>
+        <div class="login-toggle">还没有账号？<a @click="loginMode='register'">注册账号</a></div>
+        <div class="login-footer">默认管理员：admin / admin123</div>
+      </template>
+      <template v-else>
+        <h1>📝 注册账号</h1>
+        <p class="subtitle">创建新的系统账号</p>
+        <div class="form-group"><label>用户名</label><input v-model="regForm.username" placeholder="请输入用户名"></div>
+        <div class="form-group"><label>密码</label><input type="password" v-model="regForm.password" placeholder="请输入密码（至少6位）"></div>
+        <div class="form-group"><label>确认密码</label><input type="password" v-model="regForm.password2" placeholder="再次输入密码" @keyup.enter="doRegister"></div>
+        <div class="form-group"><label>关联人员</label><select v-model="regForm.empId"><option value="">请选择（可选）</option><option v-for="p in personnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div>
+        <button class="login-btn" @click="doRegister" :disabled="logging">注 册</button>
+        <p v-if="loginError" class="login-error">{{ loginError }}</p>
+        <div class="login-toggle">已有账号？<a @click="loginMode='';loginError=''">返回登录</a></div>
+      </template>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div v-else class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header"><h1>🐛 DefectPro</h1><p>缺陷管理系统 v1.0</p></div>
+      <nav class="sidebar-nav">
+        <div v-for="item in navItems" :key="item.key" class="nav-item" :class="{active:currentPage===item.key}" @click="currentPage=item.key">
+          <span class="nav-icon">{{ item.icon }}</span><span>{{ item.label }}</span>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-avatar">{{ currentUser.displayName ? currentUser.displayName[0] : 'U' }}</div>
+        <div class="user-info"><div class="user-name">{{ currentUser.displayName }}</div><div class="user-role">{{ currentUser.roleName }}</div></div>
+        <button class="logout-btn" title="退出登录" @click="doLogout">⏻</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <!-- Dashboard -->
+      <div v-if="currentPage==='dashboard'" key="dashboard">
+        <div class="page-header"><h2>📊 仪表盘</h2><span style="color:var(--text2);font-size:13px">欢迎回来，{{ currentUser.displayName }}</span></div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-icon blue">👥</div><div class="stat-info"><h3>{{ personnel.length }}</h3><p>人员总数</p></div></div>
+          <div class="stat-card"><div class="stat-icon green">📋</div><div class="stat-info"><h3>{{ requirements.length }}</h3><p>需求总数</p></div></div>
+          <div class="stat-card"><div class="stat-icon orange">📦</div><div class="stat-info"><h3>{{ versions.length }}</h3><p>版本总数</p></div></div>
+          <div class="stat-card"><div class="stat-icon red">🐛</div><div class="stat-info"><h3>{{ defects.length }}</h3><p>缺陷总数</p></div></div>
+          <div class="stat-card"><div class="stat-icon purple">🔴</div><div class="stat-info"><h3>{{ defects.filter(d=>d.status!=='已关闭'&&d.status!=='已拒绝').length }}</h3><p>未关闭缺陷</p></div></div>
+          <div class="stat-card"><div class="stat-icon teal">🔐</div><div class="stat-info"><h3>{{ accounts.length }}</h3><p>系统账号</p></div></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:12px">最近缺陷动态</h3>
+          <div v-if="recentDefects.length===0" class="empty-state"><div class="icon">📭</div><p>暂无缺陷数据</p></div>
+          <div class="table-wrapper" v-else>
+            <table><thead><tr><th>ID</th><th>标题</th><th>严重程度</th><th>状态</th><th>指派给</th><th>创建时间</th></tr></thead>
+            <tbody><tr v-for="d in recentDefects" :key="d.id"><td>{{ d.id }}</td><td>{{ d.title }}</td><td><span :class="severityBadge(d.severity)">{{ d.severity }}</span></td><td><span :class="statusBadge(d.status)">{{ d.status }}</span></td><td>{{ getPersonName(d.assignee) }}</td><td>{{ d.createdAt }}</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personnel -->
+      <div v-if="currentPage==='personnel'" key="personnel">
+        <div class="page-header"><h2>👥 人员管理</h2><button class="btn btn-primary" @click="openPersonnelModal()">+ 新增人员</button></div>
+        <div class="card">
+          <div class="search-bar"><input class="form-control" placeholder="搜索姓名/工号..." v-model="personnelSearch"></div>
+          <div v-if="filteredPersonnel.length===0" class="empty-state"><div class="icon">👤</div><p>暂无人员数据</p></div>
+          <div class="table-wrapper" v-else>
+            <table><thead><tr><th>工号</th><th>姓名</th><th>邮箱</th><th>部门</th><th>角色</th><th>关联账号</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody><tr v-for="p in paginatedPersonnel" :key="p.empId"><td>{{ p.empId }}</td><td><strong>{{ p.name }}</strong></td><td>{{ p.email }}</td><td>{{ p.department }}</td><td><span class="badge badge-purple">{{ getRoleName(p.roleId) }}</span></td><td>{{ getAccountForPerson(p.empId) }}</td><td><span :class="p.active?'badge badge-success':'badge badge-secondary'">{{ p.active?'在职':'离职' }}</span></td><td><div class="btn-group"><button class="btn btn-outline btn-sm" @click="openPersonnelModal(p)">编辑</button><button class="btn btn-danger btn-sm" @click="deletePersonnel(p.empId)">删除</button></div></td></tr></tbody></table>
+          </div>
+          <div class="pagination" v-if="personnelTotalPages>1"><button :disabled="personnelPage<=1" @click="personnelPage--">上一页</button><button v-for="pg in personnelTotalPages" :key="pg" :class="{active:pg===personnelPage}" @click="personnelPage=pg">{{ pg }}</button><button :disabled="personnelPage>=personnelTotalPages" @click="personnelPage++">下一页</button></div>
+        </div>
+        <div class="modal-overlay" v-if="showPersonnelModal" @click.self="showPersonnelModal=false">
+          <div class="modal"><div class="modal-header"><h3>{{ editingPersonnel?'编辑人员':'新增人员' }}</h3><button class="modal-close" @click="showPersonnelModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-row"><div class="form-group"><label>工号</label><input class="form-control" v-model="personnelForm.empId" :disabled="!!editingPersonnel" placeholder="如 EMP001"></div><div class="form-group"><label>姓名</label><input class="form-control" v-model="personnelForm.name" placeholder="姓名"></div></div>
+              <div class="form-row"><div class="form-group"><label>邮箱</label><input class="form-control" v-model="personnelForm.email" placeholder="email@example.com"></div><div class="form-group"><label>部门</label><select class="form-control" v-model="personnelForm.department"><option value="">请选择</option><option>研发部</option><option>测试部</option><option>产品部</option><option>运维部</option><option>项目管理部</option></select></div></div>
+              <div class="form-row"><div class="form-group"><label>角色</label><select class="form-control" v-model="personnelForm.roleId"><option value="">请选择</option><option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option></select></div><div class="form-group"><label>状态</label><select class="form-control" v-model="personnelForm.active"><option :value="true">在职</option><option :value="false">离职</option></select></div></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showPersonnelModal=false">取消</button><button class="btn btn-primary" @click="savePersonnel" :disabled="saving">{{ saving?'保存中...':'保存' }}</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Roles -->
+      <div v-if="currentPage==='roles'" key="roles">
+        <div class="page-header"><h2>🔑 角色管理</h2><button class="btn btn-primary" @click="openRoleModal()">+ 新增角色</button></div>
+        <div class="card">
+          <div v-if="roles.length===0" class="empty-state"><div class="icon">🔑</div><p>暂无角色数据</p></div>
+          <div class="table-wrapper" v-else>
+            <table><thead><tr><th>角色ID</th><th>角色名称</th><th>描述</th><th>权限</th><th>关联人数</th><th>操作</th></tr></thead>
+            <tbody><tr v-for="r in roles" :key="r.id"><td>{{ r.id }}</td><td><strong>{{ r.name }}</strong></td><td>{{ r.description }}</td><td><span v-for="p in r.permissions" :key="p" class="tag" style="background:#ede9fe;color:#5b21b6">{{ p }}</span></td><td>{{ personnel.filter(p=>p.roleId===r.id).length }}</td><td><div class="btn-group"><button class="btn btn-outline btn-sm" @click="openRoleModal(r)">编辑</button><button class="btn btn-danger btn-sm" @click="deleteRole(r.id)">删除</button></div></td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showRoleModal" @click.self="showRoleModal=false">
+          <div class="modal"><div class="modal-header"><h3>{{ editingRole?'编辑角色':'新增角色' }}</h3><button class="modal-close" @click="showRoleModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-row"><div class="form-group"><label>角色ID</label><input class="form-control" v-model="roleForm.id" :disabled="!!editingRole" placeholder="如 admin"></div><div class="form-group"><label>角色名称</label><input class="form-control" v-model="roleForm.name" placeholder="如 系统管理员"></div></div>
+              <div class="form-group"><label>描述</label><input class="form-control" v-model="roleForm.description" placeholder="角色描述"></div>
+              <div class="form-group"><label>权限（多选）</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"><label v-for="perm in allPermissions" :key="perm" style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" :value="perm" v-model="roleForm.permissions"> {{ perm }}</label></div></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showRoleModal=false">取消</button><button class="btn btn-primary" @click="saveRole" :disabled="saving">{{ saving?'保存中...':'保存' }}</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Versions -->
+      <div v-if="currentPage==='versions'" key="versions">
+        <div class="page-header"><h2>📦 版本管理</h2><button class="btn btn-primary" @click="openVersionModal()">+ 新增版本</button></div>
+        <div class="card">
+          <div v-if="versions.length===0" class="empty-state"><div class="icon">📦</div><p>暂无版本数据</p></div>
+          <div class="table-wrapper" v-else>
+            <table><thead><tr><th>版本号</th><th>名称</th><th>状态</th><th>计划发布</th><th>实际发布</th><th>关联需求</th><th>关联缺陷</th><th>操作</th></tr></thead>
+            <tbody><tr v-for="v in versions" :key="v.version"><td><strong>{{ v.version }}</strong></td><td>{{ v.name }}</td><td><span :class="versionBadge(v.status)">{{ v.status }}</span></td><td>{{ v.plannedDate }}</td><td>{{ v.releaseDate||'-' }}</td><td>{{ requirements.filter(r=>r.version===v.version).length }}</td><td>{{ defects.filter(d=>d.version===v.version).length }}</td><td><div class="btn-group"><button class="btn btn-outline btn-sm" @click="openVersionModal(v)">编辑</button><button class="btn btn-success btn-sm" v-if="v.status==='开发中'||v.status==='测试中'" @click="releaseVersion(v)">发布</button><button class="btn btn-danger btn-sm" @click="deleteVersion(v.version)">删除</button></div></td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showVersionModal" @click.self="showVersionModal=false">
+          <div class="modal"><div class="modal-header"><h3>{{ editingVersion?'编辑版本':'新增版本' }}</h3><button class="modal-close" @click="showVersionModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-row"><div class="form-group"><label>版本号</label><input class="form-control" v-model="versionForm.version" :disabled="!!editingVersion" placeholder="如 v1.0.0"></div><div class="form-group"><label>版本名称</label><input class="form-control" v-model="versionForm.name" placeholder="如 首次发布"></div></div>
+              <div class="form-row"><div class="form-group"><label>状态</label><select class="form-control" v-model="versionForm.status"><option>规划中</option><option>开发中</option><option>测试中</option><option>已发布</option><option>已废弃</option></select></div><div class="form-group"><label>计划发布日期</label><input type="date" class="form-control" v-model="versionForm.plannedDate"></div></div>
+              <div class="form-group"><label>备注</label><textarea class="form-control" v-model="versionForm.notes" placeholder="版本说明"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showVersionModal=false">取消</button><button class="btn btn-primary" @click="saveVersion" :disabled="saving">{{ saving?'保存中...':'保存' }}</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Requirements -->
+      <div v-if="currentPage==='requirements'" key="requirements">
+        <div class="page-header"><h2>📋 需求管理</h2><button class="btn btn-primary" @click="openReqModal()">+ 新增需求</button></div>
+        <div class="card">
+          <div class="search-bar"><input class="form-control" placeholder="搜索需求..." v-model="reqSearch"><select class="form-control" style="max-width:160px" v-model="reqFilterStatus"><option value="">全部状态</option><option v-for="s in reqStatuses" :key="s">{{ s }}</option></select><select class="form-control" style="max-width:160px" v-model="reqFilterVersion"><option value="">全部版本</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }}</option></select></div>
+          <div v-if="filteredReqs.length===0" class="empty-state"><div class="icon">📋</div><p>暂无需求数据</p></div>
+          <div class="table-wrapper" v-else>
+            <table><thead><tr><th>需求ID</th><th>标题</th><th>优先级</th><th>状态</th><th>版本</th><th>负责人</th><th>操作</th></tr></thead>
+            <tbody><tr v-for="r in filteredReqs" :key="r.id"><td>{{ r.id }}</td><td><strong>{{ r.title }}</strong></td><td><span :class="priorityBadge(r.priority)">{{ r.priority }}</span></td><td><span :class="reqStatusBadge(r.status)">{{ r.status }}</span></td><td>{{ r.version||'-' }}</td><td>{{ getPersonName(r.owner) }}</td><td><div class="btn-group"><button class="btn btn-outline btn-sm" @click="openReqModal(r)">编辑</button><button class="btn btn-info btn-sm" @click="viewReqDetail(r)">详情</button><button class="btn btn-warning btn-sm" @click="transferReq(r)">流转</button><button class="btn btn-danger btn-sm" @click="deleteReq(r.id)">删除</button></div></td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showReqModal" @click.self="showReqModal=false">
+          <div class="modal"><div class="modal-header"><h3>{{ editingReq?'编辑需求':'新增需求' }}</h3><button class="modal-close" @click="showReqModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-group"><label>需求标题</label><input class="form-control" v-model="reqForm.title" placeholder="需求标题"></div>
+              <div class="form-row"><div class="form-group"><label>优先级</label><select class="form-control" v-model="reqForm.priority"><option>低</option><option>中</option><option>高</option><option>紧急</option></select></div><div class="form-group"><label>状态</label><select class="form-control" v-model="reqForm.status"><option v-for="s in reqStatuses" :key="s">{{ s }}</option></select></div></div>
+              <div class="form-row"><div class="form-group"><label>所属版本</label><select class="form-control" v-model="reqForm.version"><option value="">请选择</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }} - {{ v.name }}</option></select></div><div class="form-group"><label>负责人</label><select class="form-control" v-model="reqForm.owner"><option value="">请选择</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div></div>
+              <div class="form-group"><label>需求描述</label><textarea class="form-control" v-model="reqForm.description" placeholder="详细描述"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showReqModal=false">取消</button><button class="btn btn-primary" @click="saveReq" :disabled="saving">{{ saving?'保存中...':'保存' }}</button></div>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showReqDetailModal" @click.self="showReqDetailModal=false">
+          <div class="modal" style="max-width:700px"><div class="modal-header"><h3>需求详情 - {{ reqDetail.id }}</h3><button class="modal-close" @click="showReqDetailModal=false">&times;</button></div>
+            <div class="modal-body"><h3 style="margin-bottom:12px">{{ reqDetail.title }}</h3><div class="form-row" style="margin-bottom:16px"><div><strong>优先级：</strong><span :class="priorityBadge(reqDetail.priority)">{{ reqDetail.priority }}</span></div><div><strong>状态：</strong><span :class="reqStatusBadge(reqDetail.status)">{{ reqDetail.status }}</span></div></div><div class="form-row" style="margin-bottom:16px"><div><strong>版本：</strong>{{ reqDetail.version||'-' }}</div><div><strong>负责人：</strong>{{ getPersonName(reqDetail.owner) }}</div></div><div style="margin-bottom:16px"><strong>描述：</strong><p style="margin-top:4px;color:var(--text2)">{{ reqDetail.description||'无' }}</p></div><div><strong>流转记录：</strong><div class="timeline" style="margin-top:8px" v-if="reqDetail.logs&&reqDetail.logs.length"><div class="timeline-item" v-for="(log,i) in reqDetail.logs" :key="i"><div class="content">{{ log.action }}</div><div class="time">{{ log.time }}</div></div></div><p v-else style="color:var(--text2);font-size:13px">暂无流转记录</p></div></div>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showReqTransferModal" @click.self="showReqTransferModal=false">
+          <div class="modal"><div class="modal-header"><h3>需求流转 - {{ transferReqData.id }}</h3><button class="modal-close" @click="showReqTransferModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-group"><label>当前状态：<span :class="reqStatusBadge(transferReqData.status)">{{ transferReqData.status }}</span></label></div>
+              <div class="form-group"><label>流转到</label><select class="form-control" v-model="reqTransferForm.newStatus"><option v-for="s in getNextReqStatuses(transferReqData.status)" :key="s">{{ s }}</option></select></div>
+              <div class="form-group"><label>变更负责人（可选）</label><select class="form-control" v-model="reqTransferForm.newOwner"><option value="">不变更</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div>
+              <div class="form-group"><label>流转说明</label><textarea class="form-control" v-model="reqTransferForm.note" placeholder="说明流转原因"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showReqTransferModal=false">取消</button><button class="btn btn-primary" @click="confirmReqTransfer" :disabled="saving">确认流转</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workflows -->
+      <div v-if="currentPage==='workflows'" key="workflows">
+        <div class="page-header"><h2>⚙️ 流程管理</h2><button class="btn btn-primary" @click="openWorkflowModal()">+ 新增流程</button></div>
+        <div class="card">
+          <div v-if="workflows.length===0" class="empty-state"><div class="icon">⚙️</div><p>暂无流程定义</p></div>
+          <div v-for="wf in workflows" :key="wf.id" class="card" style="border:1px solid var(--border);margin-bottom:16px" v-else>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><h3>{{ wf.name }}</h3><p style="font-size:13px;color:var(--text2)">适用类型：{{ wf.type }} · {{ wf.description }}</p></div><div class="btn-group"><button class="btn btn-outline btn-sm" @click="openWorkflowModal(wf)">编辑</button><button class="btn btn-danger btn-sm" @click="deleteWorkflow(wf.id)">删除</button></div></div>
+            <div class="flow-container"><template v-for="(step,i) in wf.steps" :key="i"><div class="flow-node">{{ step }}</div><span class="flow-arrow" v-if="i<wf.steps.length-1">→</span></template></div>
+            <div style="margin-top:8px"><p style="font-size:12px;color:var(--text2)">允许的状态转换：</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"><span v-for="(t,i) in wf.transitions" :key="i" class="tag" style="background:#dbeafe;color:#1e40af">{{ t.from }} → {{ t.to }}</span></div></div>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showWorkflowModal" @click.self="showWorkflowModal=false">
+          <div class="modal" style="max-width:700px"><div class="modal-header"><h3>{{ editingWorkflow?'编辑流程':'新增流程' }}</h3><button class="modal-close" @click="showWorkflowModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-row"><div class="form-group"><label>流程名称</label><input class="form-control" v-model="wfForm.name" placeholder="如 缺陷处理流程"></div><div class="form-group"><label>适用类型</label><select class="form-control" v-model="wfForm.type"><option>缺陷</option><option>需求</option></select></div></div>
+              <div class="form-group"><label>描述</label><input class="form-control" v-model="wfForm.description" placeholder="流程描述"></div>
+              <div class="form-group"><label>流程步骤（回车添加，点击删除）</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"><span v-for="(s,i) in wfForm.steps" :key="i" class="tag" style="background:#dbeafe;color:#1e40af;cursor:pointer;padding:4px 10px" @click="wfForm.steps.splice(i,1)">{{ s }} ✕</span></div><div style="display:flex;gap:6px"><input class="form-control" v-model="wfStepInput" placeholder="输入步骤名称" @keyup.enter="addWfStep" style="flex:1"><button class="btn btn-outline btn-sm" @click="addWfStep">添加</button></div></div>
+              <div class="form-group"><label>状态转换规则</label><div v-for="(t,i) in wfForm.transitions" :key="i" style="display:flex;gap:6px;margin-bottom:6px;align-items:center"><select class="form-control" v-model="t.from" style="flex:1"><option value="">起始状态</option><option v-for="s in wfForm.steps" :key="s">{{ s }}</option></select><span>→</span><select class="form-control" v-model="t.to" style="flex:1"><option value="">目标状态</option><option v-for="s in wfForm.steps" :key="s">{{ s }}</option></select><button class="btn btn-danger btn-sm" @click="wfForm.transitions.splice(i,1)">✕</button></div><button class="btn btn-outline btn-sm" @click="wfForm.transitions.push({from:'',to:''})">+ 添加转换规则</button></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showWorkflowModal=false">取消</button><button class="btn btn-primary" @click="saveWorkflow" :disabled="saving">{{ saving?'保存中...':'保存' }}</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Defects -->
+      <div v-if="currentPage==='defects'" key="defects">
+        <div class="page-header"><h2>🐛 缺陷管理</h2><button class="btn btn-primary" @click="openDefectModal()">+ 新增缺陷</button></div>
+        <div class="card">
+          <div class="search-bar"><input class="form-control" placeholder="搜索缺陷..." v-model="defectSearch"><select class="form-control" style="max-width:140px" v-model="defectFilterSeverity"><option value="">全部等级</option><option v-for="s in severityLevels" :key="s">{{ s }}</option></select><select class="form-control" style="max-width:140px" v-model="defectFilterStatus"><option value="">全部状态</option><option v-for="s in defectStatuses" :key="s">{{ s }}</option></select><select class="form-control" style="max-width:140px" v-model="defectFilterVersion"><option value="">全部版本</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }}</option></select></div>
+          <div v-if="filteredDefects.length===0" class="empty-state"><div class="icon">🐛</div><p>暂无缺陷数据</p></div>
+          <div class="table-wrapper" v-else>
+            <table><thead><tr><th>ID</th><th>标题</th><th>严重程度</th><th>状态</th><th>版本</th><th>关联需求</th><th>指派给</th><th>创建人</th><th>操作</th></tr></thead>
+            <tbody><tr v-for="d in filteredDefects" :key="d.id"><td>{{ d.id }}</td><td><strong>{{ d.title }}</strong></td><td><span :class="severityBadge(d.severity)">{{ d.severity }}</span></td><td><span :class="statusBadge(d.status)">{{ d.status }}</span></td><td>{{ d.version||'-' }}</td><td>{{ d.relatedReq||'-' }}</td><td>{{ getPersonName(d.assignee) }}</td><td>{{ getPersonName(d.reporter) }}</td><td><div class="btn-group"><button class="btn btn-outline btn-sm" @click="openDefectModal(d)">编辑</button><button class="btn btn-info btn-sm" @click="viewDefectDetail(d)">详情</button><button class="btn btn-warning btn-sm" @click="transferDefect(d)">流转</button><button class="btn btn-sm" :class="d.assignee?'btn-success':'btn-outline'" @click="reassignDefect(d)">转派</button><button class="btn btn-danger btn-sm" @click="deleteDefect(d.id)">删除</button></div></td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showDefectModal" @click.self="showDefectModal=false">
+          <div class="modal" style="max-width:700px"><div class="modal-header"><h3>{{ editingDefect?'编辑缺陷':'新增缺陷' }}</h3><button class="modal-close" @click="showDefectModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-group"><label>缺陷标题</label><input class="form-control" v-model="defectForm.title" placeholder="简要描述缺陷"></div>
+              <div class="form-row"><div class="form-group"><label>严重程度</label><select class="form-control" v-model="defectForm.severity"><option v-for="s in severityLevels" :key="s">{{ s }}</option></select></div><div class="form-group"><label>状态</label><select class="form-control" v-model="defectForm.status"><option v-for="s in defectStatuses" :key="s">{{ s }}</option></select></div></div>
+              <div class="form-row"><div class="form-group"><label>所属版本</label><select class="form-control" v-model="defectForm.version"><option value="">请选择</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }}</option></select></div><div class="form-group"><label>关联需求</label><select class="form-control" v-model="defectForm.relatedReq"><option value="">无关联</option><option v-for="r in requirements" :key="r.id" :value="r.id">{{ r.id }} - {{ r.title }}</option></select></div></div>
+              <div class="form-row"><div class="form-group"><label>指派给</label><select class="form-control" v-model="defectForm.assignee"><option value="">请选择</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div><div class="form-group"><label>创建人</label><select class="form-control" v-model="defectForm.reporter"><option value="">请选择</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div></div>
+              <div class="form-group"><label>详细描述</label><textarea class="form-control" v-model="defectForm.description" placeholder="复现步骤、期望结果、实际结果..."></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showDefectModal=false">取消</button><button class="btn btn-primary" @click="saveDefect" :disabled="saving">{{ saving?'保存中...':'保存' }}</button></div>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showDefectDetailModal" @click.self="showDefectDetailModal=false">
+          <div class="modal" style="max-width:750px"><div class="modal-header"><h3>缺陷详情 - {{ defectDetail.id }}</h3><button class="modal-close" @click="showDefectDetailModal=false">&times;</button></div>
+            <div class="modal-body"><h3 style="margin-bottom:12px">{{ defectDetail.title }}</h3><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px"><div><strong>严重程度：</strong><span :class="severityBadge(defectDetail.severity)">{{ defectDetail.severity }}</span></div><div><strong>状态：</strong><span :class="statusBadge(defectDetail.status)">{{ defectDetail.status }}</span></div><div><strong>版本：</strong>{{ defectDetail.version||'-' }}</div><div><strong>指派给：</strong>{{ getPersonName(defectDetail.assignee) }}</div><div><strong>创建人：</strong>{{ getPersonName(defectDetail.reporter) }}</div><div><strong>关联需求：</strong>{{ defectDetail.relatedReq||'-' }}</div></div><div style="margin-bottom:16px"><strong>描述：</strong><p style="margin-top:4px;color:var(--text2);white-space:pre-wrap">{{ defectDetail.description||'无' }}</p></div><div><strong>流转记录：</strong><div class="timeline" style="margin-top:8px" v-if="defectDetail.logs&&defectDetail.logs.length"><div class="timeline-item" v-for="(log,i) in defectDetail.logs" :key="i"><div class="content">{{ log.action }}</div><div class="time">{{ log.time }}</div></div></div><p v-else style="color:var(--text2);font-size:13px">暂无流转记录</p></div></div>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showDefectTransferModal" @click.self="showDefectTransferModal=false">
+          <div class="modal"><div class="modal-header"><h3>缺陷状态流转 - {{ transferDefectData.id }}</h3><button class="modal-close" @click="showDefectTransferModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-group"><label>当前状态：<span :class="statusBadge(transferDefectData.status)">{{ transferDefectData.status }}</span></label></div>
+              <div class="form-group"><label>当前严重程度：<span :class="severityBadge(transferDefectData.severity)">{{ transferDefectData.severity }}</span></label></div>
+              <div class="form-group"><label>流转到状态</label><select class="form-control" v-model="defectTransferForm.newStatus"><option v-for="s in getNextDefectStatuses(transferDefectData.status)" :key="s">{{ s }}</option></select></div>
+              <div class="form-group"><label>变更严重程度（可选）</label><select class="form-control" v-model="defectTransferForm.newSeverity"><option value="">不变更</option><option v-for="s in severityLevels" :key="s">{{ s }}</option></select></div>
+              <div class="form-group"><label>流转说明</label><textarea class="form-control" v-model="defectTransferForm.note" placeholder="说明流转原因"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showDefectTransferModal=false">取消</button><button class="btn btn-primary" @click="confirmDefectTransfer" :disabled="saving">确认流转</button></div>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showReassignModal" @click.self="showReassignModal=false">
+          <div class="modal"><div class="modal-header"><h3>转派缺陷 - {{ reassignDefectData.id }}</h3><button class="modal-close" @click="showReassignModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-group"><label>当前指派给：{{ getPersonName(reassignDefectData.assignee) }}</label></div>
+              <div class="form-group"><label>转派给</label><select class="form-control" v-model="reassignForm.newAssignee"><option value="">请选择</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div>
+              <div class="form-group"><label>转派说明</label><textarea class="form-control" v-model="reassignForm.note" placeholder="说明转派原因"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showReassignModal=false">取消</button><button class="btn btn-primary" @click="confirmReassign" :disabled="saving">确认转派</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accounts -->
+      <div v-if="currentPage==='accounts'" key="accounts">
+        <div class="page-header"><h2>🔐 账号管理</h2><button class="btn btn-primary" @click="openAccountModal()">+ 新增账号</button></div>
+        <div class="card">
+          <div v-if="accounts.length===0" class="empty-state"><div class="icon">🔐</div><p>暂无账号数据</p></div>
+          <div class="table-wrapper" v-else>
+            <table><thead><tr><th>用户名</th><th>关联人员</th><th>角色</th><th>状态</th><th>创建时间</th><th>最后登录</th><th>操作</th></tr></thead>
+            <tbody><tr v-for="a in accounts" :key="a.username"><td><strong>{{ a.username }}</strong></td><td>{{ a.empId ? getPersonName(a.empId) : '未关联' }}</td><td><span class="badge badge-purple">{{ a.roleName||'-' }}</span></td><td><span :class="a.enabled?'badge badge-success':'badge badge-secondary'">{{ a.enabled?'启用':'禁用' }}</span></td><td>{{ a.createdAt }}</td><td>{{ a.lastLogin||'从未登录' }}</td><td><div class="btn-group"><button class="btn btn-outline btn-sm" @click="openAccountModal(a)">编辑</button><button class="btn btn-sm" :class="a.enabled?'btn-warning':'btn-success'" @click="toggleAccount(a)">{{ a.enabled?'禁用':'启用' }}</button><button class="btn btn-info btn-sm" @click="resetPassword(a)">重置密码</button><button class="btn btn-danger btn-sm" @click="deleteAccount(a.username)" :disabled="a.username==='admin'">删除</button></div></td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="modal-overlay" v-if="showAccountModal" @click.self="showAccountModal=false">
+          <div class="modal"><div class="modal-header"><h3>{{ editingAccount?'编辑账号':'新增账号' }}</h3><button class="modal-close" @click="showAccountModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-row"><div class="form-group"><label>用户名</label><input class="form-control" v-model="accountForm.username" :disabled="!!editingAccount" placeholder="登录用户名"></div><div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><input type="password" class="form-control" v-model="accountForm.password" :placeholder="editingAccount?'留空不修改':'至少6位'"></div></div>
+              <div class="form-row"><div class="form-group"><label>关联人员</label><select class="form-control" v-model="accountForm.empId"><option value="">不关联</option><option v-for="p in personnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div><div class="form-group"><label>角色</label><select class="form-control" v-model="accountForm.roleName"><option value="">请选择</option><option v-for="r in roles" :key="r.id" :value="r.name">{{ r.name }}</option></select></div></div>
+              <div class="form-group"><label>状态</label><select class="form-control" v-model="accountForm.enabled"><option :value="true">启用</option><option :value="false">禁用</option></select></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showAccountModal=false">取消</button><button class="btn btn-primary" @click="saveAccount" :disabled="saving">{{ saving?'保存中...':'保存' }}</button></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
+
+createApp({
+  setup() {
+    // ===== API Helper =====
+    const token = ref(localStorage.getItem('dp_token') || '');
+    const loading = ref(false);
+    const saving = ref(false);
+
+    async function api(url, options = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token.value) headers['Authorization'] = 'Bearer ' + token.value;
+      const resp = await fetch(url, { ...options, headers: { ...headers, ...(options.headers || {}) } });
+      if (resp.status === 401) { token.value = ''; localStorage.removeItem('dp_token'); isLoggedIn.value = false; throw new Error('登录已过期'); }
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || '请求失败');
+      return data;
+    }
+
+    // ===== Toast =====
+    const toast = reactive({ show: false, msg: '', type: 'success' });
+    function showToast(msg, type) { toast.msg = msg; toast.type = type || 'success'; toast.show = true; setTimeout(() => toast.show = false, 2500); }
+
+    function now() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+
+    // ===== Navigation =====
+    const currentPage = ref('dashboard');
+    const navItems = [{ key:'dashboard',icon:'📊',label:'仪表盘' },{ key:'personnel',icon:'👥',label:'人员管理' },{ key:'roles',icon:'🔑',label:'角色管理' },{ key:'versions',icon:'📦',label:'版本管理' },{ key:'requirements',icon:'📋',label:'需求管理' },{ key:'workflows',icon:'⚙️',label:'流程管理' },{ key:'defects',icon:'🐛',label:'缺陷管理' },{ key:'accounts',icon:'🔐',label:'账号管理' }];
+
+    // ===== Auth =====
+    const isLoggedIn = ref(false);
+    const currentUser = reactive({ username: '', displayName: '', roleName: '' });
+    const loginMode = ref('');
+    const loginForm = reactive({ username: '', password: '' });
+    const regForm = reactive({ username: '', password: '', password2: '', empId: '' });
+    const loginError = ref('');
+    const logging = ref(false);
+
+    async function doLogin() {
+      loginError.value = ''; logging.value = true;
+      try {
+        const data = await api('/api/login', { method: 'POST', body: JSON.stringify(loginForm) });
+        token.value = data.token; localStorage.setItem('dp_token', data.token);
+        Object.assign(currentUser, data.user);
+        isLoggedIn.value = true;
+        loginForm.username = ''; loginForm.password = '';
+        showToast('登录成功，欢迎 ' + currentUser.displayName);
+        await loadAllData();
+      } catch (e) { loginError.value = e.message; }
+      logging.value = false;
+    }
+
+    async function doRegister() {
+      loginError.value = ''; logging.value = true;
+      try {
+        if (!regForm.username || !regForm.password) throw new Error('请填写用户名和密码');
+        if (regForm.password.length < 6) throw new Error('密码至少6位');
+        if (regForm.password !== regForm.password2) throw new Error('两次密码不一致');
+        await api('/api/register', { method: 'POST', body: JSON.stringify({ username: regForm.username, password: regForm.password, empId: regForm.empId }) });
+        showToast('注册成功，请登录');
+        loginMode.value = '';
+        Object.assign(regForm, { username: '', password: '', password2: '', empId: '' });
+      } catch (e) { loginError.value = e.message; }
+      logging.value = false;
+    }
+
+    function doLogout() { token.value = ''; localStorage.removeItem('dp_token'); isLoggedIn.value = false; currentPage.value = 'dashboard'; }
+
+    // ===== Data =====
+    const roles = ref([]);
+    const personnel = ref([]);
+    const versions = ref([]);
+    const requirements = ref([]);
+    const defects = ref([]);
+    const workflows = ref([]);
+    const accounts = ref([]);
+    const counters = ref({ reqCounter: 1, bugCounter: 1 });
+
+    async function loadAllData() {
+      try {
+        const [r, p, v, req, d, w, a, c] = await Promise.all([
+          api('/api/roles'), api('/api/personnel'), api('/api/versions'),
+          api('/api/requirements'), api('/api/defects'), api('/api/workflows'),
+          api('/api/accounts'), api('/api/counters')
+        ]);
+        roles.value = r; personnel.value = p; versions.value = v;
+        requirements.value = req; defects.value = d; workflows.value = w;
+        accounts.value = a; counters.value = c;
+      } catch (e) { showToast('数据加载失败: ' + e.message, 'error'); }
+    }
+
+    // Auto login check
+    onMounted(async () => {
+      if (token.value) {
+        try {
+          // Verify token by loading data
+          const [r, p, v, req, d, w, a, c] = await Promise.all([
+            api('/api/roles'), api('/api/personnel'), api('/api/versions'),
+            api('/api/requirements'), api('/api/defects'), api('/api/workflows'),
+            api('/api/accounts'), api('/api/counters')
+          ]);
+          roles.value = r; personnel.value = p; versions.value = v;
+          requirements.value = req; defects.value = d; workflows.value = w;
+          accounts.value = a; counters.value = c;
+          // Decode token for user info
+          const payload = JSON.parse(atob(token.value.split('.')[1]));
+          currentUser.username = payload.username;
+          currentUser.displayName = payload.displayName || payload.username;
+          currentUser.roleName = payload.roleName || '未分配角色';
+          isLoggedIn.value = true;
+        } catch { token.value = ''; localStorage.removeItem('dp_token'); }
+      }
+    });
+
+    // ===== Roles =====
+    const allPermissions = ['创建缺陷','编辑缺陷','删除缺陷','分配缺陷','关闭缺陷','创建需求','编辑需求','删除需求','管理人员','管理角色','管理版本','管理流程','管理账号','查看报表'];
+    const showRoleModal = ref(false); const editingRole = ref(null);
+    const roleForm = reactive({ id:'',name:'',description:'',permissions:[] });
+
+    function openRoleModal(r) {
+      if (r) { editingRole.value = r; Object.assign(roleForm, { id:r.id, name:r.name, description:r.description, permissions:[...r.permissions] }); }
+      else { editingRole.value = null; Object.assign(roleForm, { id:'',name:'',description:'',permissions:[] }); }
+      showRoleModal.value = true;
+    }
+    async function saveRole() {
+      if (!roleForm.id || !roleForm.name) return showToast('请填写角色ID和名称','error');
+      saving.value = true;
+      try {
+        if (editingRole.value) await api('/api/roles/' + encodeURIComponent(editingRole.value.id), { method:'PUT', body:JSON.stringify({ name:roleForm.name, description:roleForm.description, permissions:roleForm.permissions }) });
+        else await api('/api/roles', { method:'POST', body:JSON.stringify(roleForm) });
+        await loadAllData(); showRoleModal.value = false; showToast('角色保存成功');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+    async function deleteRole(id) {
+      if (!confirm('确定删除该角色？')) return;
+      try { await api('/api/roles/' + encodeURIComponent(id), { method:'DELETE' }); await loadAllData(); showToast('角色已删除'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+    function getRoleName(id) { const r = roles.value.find(r => r.id === id); return r ? r.name : '-'; }
+
+    // ===== Personnel =====
+    const personnelSearch = ref(''); const personnelPage = ref(1); const pageSize = 10;
+    const showPersonnelModal = ref(false); const editingPersonnel = ref(null);
+    const personnelForm = reactive({ empId:'',name:'',email:'',department:'',roleId:'',active:true });
+    const filteredPersonnel = computed(() => { const q = personnelSearch.value.toLowerCase(); return personnel.value.filter(p => !q || p.name.toLowerCase().includes(q) || p.empId.toLowerCase().includes(q)); });
+    const personnelTotalPages = computed(() => Math.ceil(filteredPersonnel.value.length / pageSize) || 1);
+    const paginatedPersonnel = computed(() => filteredPersonnel.value.slice((personnelPage.value-1)*pageSize, personnelPage.value*pageSize));
+    const activePersonnel = computed(() => personnel.value.filter(p => p.active));
+
+    function openPersonnelModal(p) {
+      if (p) { editingPersonnel.value = p; Object.assign(personnelForm, p); }
+      else { editingPersonnel.value = null; Object.assign(personnelForm, { empId:'',name:'',email:'',department:'',roleId:'',active:true }); }
+      showPersonnelModal.value = true;
+    }
+    async function savePersonnel() {
+      if (!personnelForm.empId || !personnelForm.name) return showToast('请填写工号和姓名','error');
+      saving.value = true;
+      try {
+        if (editingPersonnel.value) await api('/api/personnel/' + encodeURIComponent(editingPersonnel.value.empId), { method:'PUT', body:JSON.stringify(personnelForm) });
+        else await api('/api/personnel', { method:'POST', body:JSON.stringify(personnelForm) });
+        await loadAllData(); showPersonnelModal.value = false; showToast('人员保存成功');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+    async function deletePersonnel(empId) {
+      if (!confirm('确定删除该人员？')) return;
+      try { await api('/api/personnel/' + encodeURIComponent(empId), { method:'DELETE' }); await loadAllData(); showToast('人员已删除'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+    function getPersonName(empId) { const p = personnel.value.find(p => p.empId === empId); return p ? p.name : '-'; }
+    function getAccountForPerson(empId) { const a = accounts.value.find(a => a.empId === empId); return a ? a.username : '未分配'; }
+
+    // ===== Versions =====
+    const showVersionModal = ref(false); const editingVersion = ref(null);
+    const versionForm = reactive({ version:'',name:'',status:'规划中',plannedDate:'',releaseDate:'',notes:'' });
+    function openVersionModal(v) {
+      if (v) { editingVersion.value = v; Object.assign(versionForm, v); }
+      else { editingVersion.value = null; Object.assign(versionForm, { version:'',name:'',status:'规划中',plannedDate:'',releaseDate:'',notes:'' }); }
+      showVersionModal.value = true;
+    }
+    async function saveVersion() {
+      if (!versionForm.version || !versionForm.name) return showToast('请填写版本号和名称','error');
+      saving.value = true;
+      try {
+        if (editingVersion.value) await api('/api/versions/' + encodeURIComponent(editingVersion.value.version), { method:'PUT', body:JSON.stringify(versionForm) });
+        else await api('/api/versions', { method:'POST', body:JSON.stringify(versionForm) });
+        await loadAllData(); showVersionModal.value = false; showToast('版本保存成功');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+    async function releaseVersion(v) {
+      if (!confirm('确定发布版本 ' + v.version + '？')) return;
+      try { await api('/api/versions/' + encodeURIComponent(v.version), { method:'PUT', body:JSON.stringify({ ...v, status:'已发布', releaseDate: new Date().toISOString().split('T')[0] }) }); await loadAllData(); showToast(v.version + ' 已发布'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+    async function deleteVersion(ver) {
+      if (!confirm('确定删除该版本？')) return;
+      try { await api('/api/versions/' + encodeURIComponent(ver), { method:'DELETE' }); await loadAllData(); showToast('版本已删除'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+    function versionBadge(s) { return {'规划中':'badge badge-secondary','开发中':'badge badge-info','测试中':'badge badge-warning','已发布':'badge badge-success','已废弃':'badge badge-danger'}[s] || 'badge badge-secondary'; }
+
+    // ===== Requirements =====
+    const reqStatuses = ['待评审','已通过','开发中','测试中','已上线','已拒绝','已搁置'];
+    const reqSearch = ref(''); const reqFilterStatus = ref(''); const reqFilterVersion = ref('');
+    const showReqModal = ref(false); const showReqDetailModal = ref(false); const showReqTransferModal = ref(false);
+    const editingReq = ref(null); const reqDetail = ref({}); const transferReqData = ref({});
+    const reqForm = reactive({ id:'',title:'',priority:'中',status:'待评审',version:'',owner:'',description:'' });
+    const reqTransferForm = reactive({ newStatus:'',newOwner:'',note:'' });
+    const filteredReqs = computed(() => requirements.value.filter(r => {
+      if (reqSearch.value && !r.title.toLowerCase().includes(reqSearch.value.toLowerCase()) && !r.id.toLowerCase().includes(reqSearch.value.toLowerCase())) return false;
+      if (reqFilterStatus.value && r.status !== reqFilterStatus.value) return false;
+      if (reqFilterVersion.value && r.version !== reqFilterVersion.value) return false;
+      return true;
+    }));
+    function openReqModal(r) {
+      if (r) { editingReq.value = r; Object.assign(reqForm, { id:r.id,title:r.title,priority:r.priority,status:r.status,version:r.version,owner:r.owner,description:r.description }); }
+      else { editingReq.value = null; Object.assign(reqForm, { id:'REQ-'+String(counters.value.reqCounter).padStart(3,'0'),title:'',priority:'中',status:'待评审',version:'',owner:'',description:'' }); }
+      showReqModal.value = true;
+    }
+    async function saveReq() {
+      if (!reqForm.title) return showToast('请填写需求标题','error');
+      saving.value = true;
+      try {
+        if (editingReq.value) {
+          const old = editingReq.value; const changes = [];
+          if (old.status !== reqForm.status) changes.push('状态：'+old.status+' → '+reqForm.status);
+          if (old.owner !== reqForm.owner) changes.push('负责人：'+getPersonName(old.owner)+' → '+getPersonName(reqForm.owner));
+          if (old.priority !== reqForm.priority) changes.push('优先级：'+old.priority+' → '+reqForm.priority);
+          const logs = [...(old.logs||[])]; if (changes.length) changes.forEach(c => logs.push({action:c,time:now()}));
+          await api('/api/requirements/' + encodeURIComponent(reqForm.id), { method:'PUT', body:JSON.stringify({ ...reqForm, logs }) });
+        } else {
+          await api('/api/requirements', { method:'POST', body:JSON.stringify({ ...reqForm, logs:[{action:'创建需求',time:now()}] }) });
+          counters.value.reqCounter++;
+        }
+        await loadAllData(); showReqModal.value = false; showToast('需求保存成功');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+    async function deleteReq(id) {
+      if (!confirm('确定删除该需求？')) return;
+      try { await api('/api/requirements/' + encodeURIComponent(id), { method:'DELETE' }); await loadAllData(); showToast('需求已删除'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+    function viewReqDetail(r) { reqDetail.value = r; showReqDetailModal.value = true; }
+    function transferReq(r) { transferReqData.value = r; const next = getNextReqStatuses(r.status); reqTransferForm.newStatus = next[0]||r.status; reqTransferForm.newOwner = ''; reqTransferForm.note = ''; showReqTransferModal.value = true; }
+    function getNextReqStatuses(current) { const wf = workflows.value.find(w => w.type === '需求'); if (!wf) return reqStatuses.filter(s => s !== current); return wf.transitions.filter(t => t.from === current).map(t => t.to); }
+    async function confirmReqTransfer() {
+      saving.value = true;
+      try {
+        const r = requirements.value.find(r => r.id === transferReqData.value.id);
+        if (!r) return;
+        const changes = []; const updated = { ...r };
+        if (reqTransferForm.newStatus && reqTransferForm.newStatus !== r.status) { changes.push('状态：'+r.status+' → '+reqTransferForm.newStatus); updated.status = reqTransferForm.newStatus; }
+        if (reqTransferForm.newOwner && reqTransferForm.newOwner !== r.owner) { changes.push('负责人：'+getPersonName(r.owner)+' → '+getPersonName(reqTransferForm.newOwner)); updated.owner = reqTransferForm.newOwner; }
+        if (reqTransferForm.note) changes.push('备注：'+reqTransferForm.note);
+        const logs = [...(r.logs||[])]; if (changes.length) logs.push({action:changes.join('；'),time:now()});
+        await api('/api/requirements/' + encodeURIComponent(r.id), { method:'PUT', body:JSON.stringify({ ...updated, logs }) });
+        await loadAllData(); showReqTransferModal.value = false; showToast('需求流转完成');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+
+    // ===== Workflows =====
+    const showWorkflowModal = ref(false); const editingWorkflow = ref(null); const wfStepInput = ref('');
+    const wfForm = reactive({ id:'',name:'',type:'缺陷',description:'',steps:[],transitions:[] });
+    function openWorkflowModal(wf) {
+      if (wf) { editingWorkflow.value = wf; Object.assign(wfForm, JSON.parse(JSON.stringify(wf))); }
+      else { editingWorkflow.value = null; Object.assign(wfForm, { id:'wf_'+Date.now(),name:'',type:'缺陷',description:'',steps:[],transitions:[] }); }
+      wfStepInput.value = ''; showWorkflowModal.value = true;
+    }
+    function addWfStep() { if (wfStepInput.value.trim()) { wfForm.steps.push(wfStepInput.value.trim()); wfStepInput.value = ''; } }
+    async function saveWorkflow() {
+      if (!wfForm.name || wfForm.steps.length < 2) return showToast('请填写名称并至少添加2个步骤','error');
+      saving.value = true;
+      try {
+        if (editingWorkflow.value) await api('/api/workflows/' + encodeURIComponent(editingWorkflow.value.id), { method:'PUT', body:JSON.stringify(wfForm) });
+        else await api('/api/workflows', { method:'POST', body:JSON.stringify(wfForm) });
+        await loadAllData(); showWorkflowModal.value = false; showToast('流程保存成功');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+    async function deleteWorkflow(id) {
+      if (!confirm('确定删除该流程？')) return;
+      try { await api('/api/workflows/' + encodeURIComponent(id), { method:'DELETE' }); await loadAllData(); showToast('流程已删除'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+
+    // ===== Defects =====
+    const severityLevels = ['提示','一般','严重','致命'];
+    const defectStatuses = ['新建','已确认','修复中','已修复','验证中','已关闭','已拒绝','重新打开'];
+    const defectSearch = ref(''); const defectFilterSeverity = ref(''); const defectFilterStatus = ref(''); const defectFilterVersion = ref('');
+    const showDefectModal = ref(false); const showDefectDetailModal = ref(false); const showDefectTransferModal = ref(false); const showReassignModal = ref(false);
+    const editingDefect = ref(null); const defectDetail = ref({}); const transferDefectData = ref({}); const reassignDefectData = ref({});
+    const defectForm = reactive({ id:'',title:'',severity:'一般',status:'新建',version:'',relatedReq:'',assignee:'',reporter:'',description:'' });
+    const defectTransferForm = reactive({ newStatus:'',newSeverity:'',note:'' });
+    const reassignForm = reactive({ newAssignee:'',note:'' });
+    const filteredDefects = computed(() => defects.value.filter(d => {
+      if (defectSearch.value && !d.title.toLowerCase().includes(defectSearch.value.toLowerCase()) && !d.id.toLowerCase().includes(defectSearch.value.toLowerCase())) return false;
+      if (defectFilterSeverity.value && d.severity !== defectFilterSeverity.value) return false;
+      if (defectFilterStatus.value && d.status !== defectFilterStatus.value) return false;
+      if (defectFilterVersion.value && d.version !== defectFilterVersion.value) return false;
+      return true;
+    }));
+    const recentDefects = computed(() => [...defects.value].sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')).slice(0,5));
+    function openDefectModal(d) {
+      if (d) { editingDefect.value = d; Object.assign(defectForm, { id:d.id,title:d.title,severity:d.severity,status:d.status,version:d.version,relatedReq:d.relatedReq,assignee:d.assignee,reporter:d.reporter,description:d.description }); }
+      else { editingDefect.value = null; Object.assign(defectForm, { id:'BUG-'+String(counters.value.bugCounter).padStart(3,'0'),title:'',severity:'一般',status:'新建',version:'',relatedReq:'',assignee:'',reporter:'',description:'' }); }
+      showDefectModal.value = true;
+    }
+    async function saveDefect() {
+      if (!defectForm.title) return showToast('请填写缺陷标题','error');
+      saving.value = true;
+      try {
+        if (editingDefect.value) {
+          const old = editingDefect.value; const changes = [];
+          if (old.severity !== defectForm.severity) changes.push('严重程度：'+old.severity+' → '+defectForm.severity);
+          if (old.status !== defectForm.status) changes.push('状态：'+old.status+' → '+defectForm.status);
+          if (old.assignee !== defectForm.assignee) changes.push('指派：'+getPersonName(old.assignee)+' → '+getPersonName(defectForm.assignee));
+          const logs = [...(old.logs||[])]; if (changes.length) changes.forEach(c => logs.push({action:c,time:now()}));
+          await api('/api/defects/' + encodeURIComponent(defectForm.id), { method:'PUT', body:JSON.stringify({ ...defectForm, createdAt:old.createdAt, logs }) });
+        } else {
+          await api('/api/defects', { method:'POST', body:JSON.stringify({ ...defectForm, logs:[{action:'创建缺陷',time:now()}] }) });
+          counters.value.bugCounter++;
+        }
+        await loadAllData(); showDefectModal.value = false; showToast('缺陷保存成功');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+    async function deleteDefect(id) {
+      if (!confirm('确定删除该缺陷？')) return;
+      try { await api('/api/defects/' + encodeURIComponent(id), { method:'DELETE' }); await loadAllData(); showToast('缺陷已删除'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+    function viewDefectDetail(d) { defectDetail.value = d; showDefectDetailModal.value = true; }
+    function transferDefect(d) { transferDefectData.value = d; const next = getNextDefectStatuses(d.status); defectTransferForm.newStatus = next[0]||d.status; defectTransferForm.newSeverity = ''; defectTransferForm.note = ''; showDefectTransferModal.value = true; }
+    function getNextDefectStatuses(current) { const wf = workflows.value.find(w => w.type === '缺陷'); if (!wf) return defectStatuses.filter(s => s !== current); return wf.transitions.filter(t => t.from === current).map(t => t.to); }
+    async function confirmDefectTransfer() {
+      saving.value = true;
+      try {
+        const d = defects.value.find(d => d.id === transferDefectData.value.id); if (!d) return;
+        const changes = []; const updated = { ...d };
+        if (defectTransferForm.newStatus && defectTransferForm.newStatus !== d.status) { changes.push('状态：'+d.status+' → '+defectTransferForm.newStatus); updated.status = defectTransferForm.newStatus; }
+        if (defectTransferForm.newSeverity && defectTransferForm.newSeverity !== d.severity) { changes.push('严重程度：'+d.severity+' → '+defectTransferForm.newSeverity); updated.severity = defectTransferForm.newSeverity; }
+        if (defectTransferForm.note) changes.push('备注：'+defectTransferForm.note);
+        const logs = [...(d.logs||[])]; if (changes.length) logs.push({action:changes.join('；'),time:now()});
+        await api('/api/defects/' + encodeURIComponent(d.id), { method:'PUT', body:JSON.stringify({ ...updated, logs }) });
+        await loadAllData(); showDefectTransferModal.value = false; showToast('缺陷流转完成');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+    function reassignDefect(d) { reassignDefectData.value = d; reassignForm.newAssignee = ''; reassignForm.note = ''; showReassignModal.value = true; }
+    async function confirmReassign() {
+      if (!reassignForm.newAssignee) return showToast('请选择转派目标','error');
+      saving.value = true;
+      try {
+        const d = defects.value.find(d => d.id === reassignDefectData.value.id); if (!d) return;
+        const logMsg = '指派：'+getPersonName(d.assignee)+' → '+getPersonName(reassignForm.newAssignee)+(reassignForm.note?'（'+reassignForm.note+'）':'');
+        const logs = [...(d.logs||[]), {action:logMsg,time:now()}];
+        await api('/api/defects/' + encodeURIComponent(d.id), { method:'PUT', body:JSON.stringify({ ...d, assignee:reassignForm.newAssignee, logs }) });
+        await loadAllData(); showReassignModal.value = false; showToast('转派成功');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+
+    // ===== Accounts =====
+    const showAccountModal = ref(false); const editingAccount = ref(null);
+    const accountForm = reactive({ username:'',password:'',empId:'',roleName:'',enabled:true });
+    function openAccountModal(a) {
+      if (a) { editingAccount.value = a; Object.assign(accountForm, { username:a.username,password:'',empId:a.empId,roleName:a.roleName,enabled:a.enabled }); }
+      else { editingAccount.value = null; Object.assign(accountForm, { username:'',password:'',empId:'',roleName:'',enabled:true }); }
+      showAccountModal.value = true;
+    }
+    async function saveAccount() {
+      if (!accountForm.username) return showToast('请填写用户名','error');
+      saving.value = true;
+      try {
+        if (editingAccount.value) await api('/api/accounts/' + encodeURIComponent(editingAccount.value.username), { method:'PUT', body:JSON.stringify(accountForm) });
+        else { if (!accountForm.password || accountForm.password.length < 6) throw new Error('密码至少6位'); await api('/api/accounts', { method:'POST', body:JSON.stringify(accountForm) }); }
+        await loadAllData(); showAccountModal.value = false; showToast('账号保存成功');
+      } catch (e) { showToast(e.message,'error'); }
+      saving.value = false;
+    }
+    async function toggleAccount(a) {
+      if (a.username === 'admin') return showToast('不能禁用管理员账号','error');
+      try { await api('/api/accounts/' + encodeURIComponent(a.username), { method:'PUT', body:JSON.stringify({ ...a, enabled:!a.enabled }) }); await loadAllData(); showToast(a.username + (a.enabled?' 已启用':' 已禁用')); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+    async function resetPassword(a) {
+      const newPwd = prompt('请输入新密码（至少6位）：'); if (!newPwd) return;
+      if (newPwd.length < 6) return showToast('密码至少6位','error');
+      try { await api('/api/accounts/' + encodeURIComponent(a.username), { method:'PUT', body:JSON.stringify({ password:newPwd }) }); showToast(a.username+' 密码已重置'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+    async function deleteAccount(username) {
+      if (username === 'admin') return showToast('不能删除管理员账号','error');
+      if (!confirm('确定删除账号 '+username+'？')) return;
+      try { await api('/api/accounts/' + encodeURIComponent(username), { method:'DELETE' }); await loadAllData(); showToast('账号已删除'); }
+      catch (e) { showToast(e.message,'error'); }
+    }
+
+    // ===== Badges =====
+    function severityBadge(s) { return {'提示':'badge badge-info','一般':'badge badge-secondary','严重':'badge badge-warning','致命':'badge badge-danger'}[s] || 'badge badge-secondary'; }
+    function statusBadge(s) { return {'新建':'badge badge-info','已确认':'badge badge-purple','修复中':'badge badge-warning','已修复':'badge badge-success','验证中':'badge badge-info','已关闭':'badge badge-secondary','已拒绝':'badge badge-danger','重新打开':'badge badge-warning'}[s] || 'badge badge-secondary'; }
+    function priorityBadge(p) { return {'低':'badge badge-secondary','中':'badge badge-info','高':'badge badge-warning','紧急':'badge badge-danger'}[p] || 'badge badge-secondary'; }
+    function reqStatusBadge(s) { return {'待评审':'badge badge-info','已通过':'badge badge-purple','开发中':'badge badge-warning','测试中':'badge badge-info','已上线':'badge badge-success','已拒绝':'badge badge-danger','已搁置':'badge badge-secondary'}[s] || 'badge badge-secondary'; }
+
+    return {
+      toast, loading, saving, currentPage, navItems,
+      accounts, isLoggedIn, currentUser, loginMode, loginForm, regForm, loginError, logging,
+      doLogin, doRegister, doLogout,
+      roles, allPermissions, showRoleModal, editingRole, roleForm, openRoleModal, saveRole, deleteRole, getRoleName,
+      personnel, personnelSearch, personnelPage, filteredPersonnel, paginatedPersonnel, personnelTotalPages, activePersonnel,
+      showPersonnelModal, editingPersonnel, personnelForm, pageSize,
+      openPersonnelModal, savePersonnel, deletePersonnel, getPersonName, getAccountForPerson,
+      versions, showVersionModal, editingVersion, versionForm, openVersionModal, saveVersion, releaseVersion, deleteVersion, versionBadge,
+      requirements, reqStatuses, reqSearch, reqFilterStatus, reqFilterVersion, filteredReqs,
+      showReqModal, showReqDetailModal, showReqTransferModal, editingReq, reqForm, reqDetail, transferReqData, reqTransferForm,
+      openReqModal, saveReq, deleteReq, viewReqDetail, transferReq, getNextReqStatuses, confirmReqTransfer,
+      workflows, showWorkflowModal, editingWorkflow, wfForm, wfStepInput, openWorkflowModal, addWfStep, saveWorkflow, deleteWorkflow,
+      defects, severityLevels, defectStatuses, defectSearch, defectFilterSeverity, defectFilterStatus, defectFilterVersion, filteredDefects, recentDefects,
+      showDefectModal, showDefectDetailModal, showDefectTransferModal, showReassignModal,
+      editingDefect, defectForm, defectDetail, transferDefectData, defectTransferForm, reassignDefectData, reassignForm,
+      openDefectModal, saveDefect, deleteDefect, viewDefectDetail, transferDefect, reassignDefect, getNextDefectStatuses, confirmDefectTransfer, confirmReassign,
+      showAccountModal, editingAccount, accountForm, openAccountModal, saveAccount, toggleAccount, resetPassword, deleteAccount,
+      severityBadge, statusBadge, priorityBadge, reqStatusBadge
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

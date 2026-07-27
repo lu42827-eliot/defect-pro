@@ -1,0 +1,16 @@
+{
+  "name": "defect-pro",
+  "version": "1.0.0",
+  "description": "缺陷管理系统 - DefectPro",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sql.js": "^1.10.3",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3"
+  }
+}
