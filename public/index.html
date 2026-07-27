@@ -25,6 +25,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .login-toggle{text-align:center;margin-top:16px;font-size:13px;color:var(--text2)}
 .login-toggle a{color:var(--primary);cursor:pointer;font-weight:500}
 .pwd-meter{margin-top:-4px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pwd-input-wrap{position:relative;display:flex;align-items:center}
+.pwd-input-wrap input{flex:1;padding-right:42px;width:100%;box-sizing:border-box}
+.pwd-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;color:var(--text2);border-radius:4px}
+.pwd-eye:hover{color:var(--primary)}
+.pwd-mask{-webkit-text-security:disc;text-security:disc}
 .pwd-bar{flex:1;min-width:120px;height:6px;background:#eee;border-radius:3px;overflow:hidden}
 .pwd-bar span{display:block;height:100%;border-radius:3px;transition:width .2s,background .2s}
 .pwd-label{font-size:12px;font-weight:600}
@@ -131,13 +136,13 @@ textarea.form-control{resize:vertical;min-height:80px}
         <h1>📝 注册账号</h1>
         <p class="subtitle">创建新的系统账号</p>
         <div class="form-group"><label>用户名</label><input v-model="regForm.username" placeholder="请输入用户名"></div>
-        <div class="form-group"><label>密码</label><input type="password" v-model="regForm.password" placeholder="至少8位，含大小写字母、数字、特殊字符" autocomplete="new-password"></div>
+        <div class="form-group"><label>密码</label><div class="pwd-input-wrap"><input type="text" :class="{'pwd-mask':!showRegPwd}" v-model="regForm.password" placeholder="至少8位，含大小写字母、数字、特殊字符" autocomplete="off" name="reg_pwd_x" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="pwd-eye" @click="showRegPwd=!showRegPwd">{{ showRegPwd?'🙈':'👁️' }}</button></div></div>
         <div class="pwd-meter" v-if="regForm.password">
           <div class="pwd-bar"><span :style="{ width: (pwdScore(regForm.password)/4*100)+'%', background: PW_COLORS[pwdScore(regForm.password)] }"></span></div>
           <span class="pwd-label" :style="{ color: PW_COLORS[pwdScore(regForm.password)] }">强度：{{ PW_LABELS[pwdScore(regForm.password)] }}</span>
           <span class="pwd-tip" v-if="validatePwd(regForm.password)">{{ validatePwd(regForm.password) }}</span>
         </div>
-        <div class="form-group"><label>确认密码</label><input type="password" v-model="regForm.password2" placeholder="再次输入密码" @keyup.enter="doRegister"></div>
+        <div class="form-group"><label>确认密码</label><input type="text" :class="{'pwd-mask':!showRegPwd}" v-model="regForm.password2" placeholder="再次输入密码" @keyup.enter="doRegister" autocomplete="off" name="reg_pwd2_x" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
         <div class="form-group"><label>关联人员</label><select v-model="regForm.empId"><option value="">请选择（可选）</option><option v-for="p in personnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div>
         <button class="login-btn" @click="doRegister" :disabled="logging">注 册</button>
         <p v-if="loginError" class="login-error">{{ loginError }}</p>
@@ -387,8 +392,8 @@ textarea.form-control{resize:vertical;min-height:80px}
         </div>
         <div class="modal-overlay" v-if="showAccountModal" @click.self="showAccountModal=false">
           <div class="modal"><div class="modal-header"><h3>{{ editingAccount?'编辑账号':'新增账号' }}</h3><button class="modal-close" @click="showAccountModal=false">&times;</button></div>
-            <form class="modal-body" @submit.prevent="saveAccount">
-              <div class="form-row"><div class="form-group"><label>用户名</label><input class="form-control" v-model="accountForm.username" :disabled="!!editingAccount" placeholder="登录用户名" autocomplete="off"></div><div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><input type="password" class="form-control" v-model="accountForm.password" :placeholder="editingAccount?'留空不修改':'至少8位，含大小写/数字/特殊字符'" autocomplete="new-password"></div></div>
+            <div class="modal-body">
+              <div class="form-row"><div class="form-group"><label>用户名</label><input class="form-control" v-model="accountForm.username" :disabled="!!editingAccount" placeholder="登录用户名" autocomplete="off"></div><div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><div class="pwd-input-wrap"><input type="text" class="form-control" :class="{'pwd-mask':!showAcctPwd}" v-model="accountForm.password" :placeholder="editingAccount?'留空不修改':'至少8位，含大小写/数字/特殊字符'" autocomplete="off" name="acct_pwd_x" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="pwd-eye" @click="showAcctPwd=!showAcctPwd">{{ showAcctPwd?'🙈':'👁️' }}</button></div></div></div>
               <div class="pwd-meter" v-if="accountForm.password">
                 <div class="pwd-bar"><span :style="{ width: (pwdScore(accountForm.password)/4*100)+'%', background: PW_COLORS[pwdScore(accountForm.password)] }"></span></div>
                 <span class="pwd-label" :style="{ color: PW_COLORS[pwdScore(accountForm.password)] }">强度：{{ PW_LABELS[pwdScore(accountForm.password)] }}</span>
@@ -396,7 +401,7 @@ textarea.form-control{resize:vertical;min-height:80px}
               </div>
               <div class="form-row"><div class="form-group"><label>关联人员</label><select class="form-control" v-model="accountForm.empId"><option value="">不关联</option><option v-for="p in personnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div><div class="form-group"><label>角色</label><select class="form-control" v-model="accountForm.roleName"><option value="">请选择</option><option v-for="r in roles" :key="r.id" :value="r.name">{{ r.name }}</option></select></div></div>
               <div class="form-group"><label>状态</label><select class="form-control" v-model="accountForm.enabled"><option :value="true">启用</option><option :value="false">禁用</option></select></div>
-            </form>
+            </div>
             <div class="modal-footer"><button class="btn btn-outline" @click="showAccountModal=false">取消</button><button class="btn btn-primary" @click="saveAccount" :disabled="saving">{{ saving?'保存中...':'保存' }}</button></div>
           </div>
         </div>
@@ -441,6 +446,7 @@ createApp({
     const loginMode = ref('');
     const loginForm = reactive({ username: '', password: '' });
     const regForm = reactive({ username: '', password: '', password2: '', empId: '' });
+    const showRegPwd = ref(false);
     const loginError = ref('');
     const logging = ref(false);
 
@@ -829,6 +835,7 @@ createApp({
     // ===== Accounts =====
     const showAccountModal = ref(false); const editingAccount = ref(null);
     const accountForm = reactive({ username:'',password:'',empId:'',roleName:'',enabled:true });
+    const showAcctPwd = ref(false);
     function openAccountModal(a) {
       if (a) { editingAccount.value = a; Object.assign(accountForm, { username:a.username,password:'',empId:a.empId,roleName:a.roleName,enabled:a.enabled }); }
       else { editingAccount.value = null; Object.assign(accountForm, { username:'',password:'',empId:'',roleName:'',enabled:true }); }
@@ -870,7 +877,7 @@ createApp({
 
     return {
       toast, loading, saving, currentPage, navItems,
-      accounts, isLoggedIn, currentUser, loginMode, loginForm, regForm, loginError, logging,
+      accounts, isLoggedIn, currentUser, loginMode, loginForm, regForm, loginError, logging, showRegPwd,
       doLogin, doRegister, doLogout,
       roles, allPermissions, showRoleModal, editingRole, roleForm, openRoleModal, saveRole, deleteRole, getRoleName,
       personnel, personnelSearch, personnelPage, filteredPersonnel, paginatedPersonnel, personnelTotalPages, activePersonnel,
@@ -885,7 +892,7 @@ createApp({
       showDefectModal, showDefectDetailModal, showDefectTransferModal, showReassignModal,
       editingDefect, defectForm, defectDetail, transferDefectData, defectTransferForm, reassignDefectData, reassignForm,
       openDefectModal, saveDefect, deleteDefect, viewDefectDetail, transferDefect, reassignDefect, getNextDefectStatuses, confirmDefectTransfer, confirmReassign,
-      showAccountModal, editingAccount, accountForm, openAccountModal, saveAccount, toggleAccount, resetPassword, deleteAccount,
+      showAccountModal, editingAccount, accountForm, openAccountModal, saveAccount, toggleAccount, resetPassword, deleteAccount, showAcctPwd,
       importFile, exportBackup, triggerImport, importBackup,
       severityBadge, statusBadge, priorityBadge, reqStatusBadge
     };
