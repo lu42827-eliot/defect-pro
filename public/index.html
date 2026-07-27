@@ -24,6 +24,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 .login-footer a{color:var(--primary);cursor:pointer;text-decoration:none;font-weight:500}
 .login-toggle{text-align:center;margin-top:16px;font-size:13px;color:var(--text2)}
 .login-toggle a{color:var(--primary);cursor:pointer;font-weight:500}
+.pwd-meter{margin-top:-4px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pwd-bar{flex:1;min-width:120px;height:6px;background:#eee;border-radius:3px;overflow:hidden}
+.pwd-bar span{display:block;height:100%;border-radius:3px;transition:width .2s,background .2s}
+.pwd-label{font-size:12px;font-weight:600}
+.pwd-tip{font-size:12px;color:#e74c3c;width:100%}
 .app-layout{display:flex;min-height:100vh}
 .sidebar{width:220px;background:var(--sidebar-bg);color:var(--sidebar-text);flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
 .sidebar-header{padding:20px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -126,7 +131,12 @@ textarea.form-control{resize:vertical;min-height:80px}
         <h1>📝 注册账号</h1>
         <p class="subtitle">创建新的系统账号</p>
         <div class="form-group"><label>用户名</label><input v-model="regForm.username" placeholder="请输入用户名"></div>
-        <div class="form-group"><label>密码</label><input type="password" v-model="regForm.password" placeholder="请输入密码（至少6位）"></div>
+        <div class="form-group"><label>密码</label><input type="password" v-model="regForm.password" placeholder="至少8位，含大小写字母、数字、特殊字符"></div>
+        <div class="pwd-meter" v-if="regForm.password">
+          <div class="pwd-bar"><span :style="{ width: (pwdScore(regForm.password)/4*100)+'%', background: PW_COLORS[pwdScore(regForm.password)] }"></span></div>
+          <span class="pwd-label" :style="{ color: PW_COLORS[pwdScore(regForm.password)] }">强度：{{ PW_LABELS[pwdScore(regForm.password)] }}</span>
+          <span class="pwd-tip" v-if="validatePwd(regForm.password)">{{ validatePwd(regForm.password) }}</span>
+        </div>
         <div class="form-group"><label>确认密码</label><input type="password" v-model="regForm.password2" placeholder="再次输入密码" @keyup.enter="doRegister"></div>
         <div class="form-group"><label>关联人员</label><select v-model="regForm.empId"><option value="">请选择（可选）</option><option v-for="p in personnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div>
         <button class="login-btn" @click="doRegister" :disabled="logging">注 册</button>
@@ -371,7 +381,12 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="modal-overlay" v-if="showAccountModal" @click.self="showAccountModal=false">
           <div class="modal"><div class="modal-header"><h3>{{ editingAccount?'编辑账号':'新增账号' }}</h3><button class="modal-close" @click="showAccountModal=false">&times;</button></div>
             <div class="modal-body">
-              <div class="form-row"><div class="form-group"><label>用户名</label><input class="form-control" v-model="accountForm.username" :disabled="!!editingAccount" placeholder="登录用户名"></div><div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><input type="password" class="form-control" v-model="accountForm.password" :placeholder="editingAccount?'留空不修改':'至少6位'"></div></div>
+              <div class="form-row"><div class="form-group"><label>用户名</label><input class="form-control" v-model="accountForm.username" :disabled="!!editingAccount" placeholder="登录用户名"></div><div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><input type="password" class="form-control" v-model="accountForm.password" :placeholder="editingAccount?'留空不修改':'至少8位，含大小写/数字/特殊字符'"></div></div>
+              <div class="pwd-meter" v-if="accountForm.password">
+                <div class="pwd-bar"><span :style="{ width: (pwdScore(accountForm.password)/4*100)+'%', background: PW_COLORS[pwdScore(accountForm.password)] }"></span></div>
+                <span class="pwd-label" :style="{ color: PW_COLORS[pwdScore(accountForm.password)] }">强度：{{ PW_LABELS[pwdScore(accountForm.password)] }}</span>
+                <span class="pwd-tip" v-if="validatePwd(accountForm.password)">{{ validatePwd(accountForm.password) }}</span>
+              </div>
               <div class="form-row"><div class="form-group"><label>关联人员</label><select class="form-control" v-model="accountForm.empId"><option value="">不关联</option><option v-for="p in personnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div><div class="form-group"><label>角色</label><select class="form-control" v-model="accountForm.roleName"><option value="">请选择</option><option v-for="r in roles" :key="r.id" :value="r.name">{{ r.name }}</option></select></div></div>
               <div class="form-group"><label>状态</label><select class="form-control" v-model="accountForm.enabled"><option :value="true">启用</option><option :value="false">禁用</option></select></div>
             </div>
@@ -436,11 +451,35 @@ createApp({
       logging.value = false;
     }
 
+    // 密码强度校验（与后端规则一致）
+    const COMMON_PW = ['password','123456','12345678','qwerty','abc123','admin','admin123','password123','administrator','letmein','welcome','iloveyou','password1','Password1','Password123','Admin@123','Admin123','qwerty123','000000','111111','passw0rd','p@ssw0rd'];
+    function validatePwd(pw) {
+      if (!pw || pw.length < 8) return '密码至少8位，且需含大小写字母、数字和特殊字符';
+      if (!/[a-z]/.test(pw)) return '需包含小写字母';
+      if (!/[A-Z]/.test(pw)) return '需包含大写字母';
+      if (!/[0-9]/.test(pw)) return '需包含数字';
+      if (!/[^A-Za-z0-9]/.test(pw)) return '需包含特殊字符（如 !@#$%^&*）';
+      if (COMMON_PW.includes(pw.toLowerCase())) return '该密码过于常见，已被大量泄露，请更换';
+      return '';
+    }
+    function pwdScore(pw) {
+      if (!pw) return 0;
+      let s = 0;
+      if (pw.length >= 8) s++;
+      if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
+      if (/[0-9]/.test(pw)) s++;
+      if (/[^A-Za-z0-9]/.test(pw)) s++;
+      if (pw.length >= 12) s++;
+      return Math.min(s, 4);
+    }
+    const PW_LABELS = ['', '弱', '较弱', '中等', '强'];
+    const PW_COLORS = ['#e0e0e0', '#e74c3c', '#e67e22', '#f1c40f', '#27ae60'];
+
     async function doRegister() {
       loginError.value = ''; logging.value = true;
       try {
         if (!regForm.username || !regForm.password) throw new Error('请填写用户名和密码');
-        if (regForm.password.length < 6) throw new Error('密码至少6位');
+        const m = validatePwd(regForm.password); if (m) throw new Error(m);
         if (regForm.password !== regForm.password2) throw new Error('两次密码不一致');
         await api('/api/register', { method: 'POST', body: JSON.stringify({ username: regForm.username, password: regForm.password, empId: regForm.empId }) });
         showToast('注册成功，请登录');
@@ -763,7 +802,7 @@ createApp({
       saving.value = true;
       try {
         if (editingAccount.value) await api('/api/accounts/' + encodeURIComponent(editingAccount.value.username), { method:'PUT', body:JSON.stringify(accountForm) });
-        else { if (!accountForm.password || accountForm.password.length < 6) throw new Error('密码至少6位'); await api('/api/accounts', { method:'POST', body:JSON.stringify(accountForm) }); }
+        else { if (!accountForm.password) throw new Error('请填写密码'); const am = validatePwd(accountForm.password); if (am) throw new Error(am); await api('/api/accounts', { method:'POST', body:JSON.stringify(accountForm) }); }
         await loadAllData(); showAccountModal.value = false; showToast('账号保存成功');
       } catch (e) { showToast(e.message,'error'); }
       saving.value = false;
@@ -774,8 +813,8 @@ createApp({
       catch (e) { showToast(e.message,'error'); }
     }
     async function resetPassword(a) {
-      const newPwd = prompt('请输入新密码（至少6位）：'); if (!newPwd) return;
-      if (newPwd.length < 6) return showToast('密码至少6位','error');
+      const newPwd = prompt('请输入新密码（至少8位，含大小写字母、数字和特殊字符）：'); if (!newPwd) return;
+      const pm = validatePwd(newPwd); if (pm) return showToast(pm,'error');
       try { await api('/api/accounts/' + encodeURIComponent(a.username), { method:'PUT', body:JSON.stringify({ password:newPwd }) }); showToast(a.username+' 密码已重置'); }
       catch (e) { showToast(e.message,'error'); }
     }

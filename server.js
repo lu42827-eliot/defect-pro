@@ -104,7 +104,7 @@ function seedData() {
   }
   const ac = get('SELECT COUNT(*) as c FROM accounts').c;
   if (ac === 0) {
-    const hash = bcrypt.hashSync('admin123', 10);
+    const hash = bcrypt.hashSync('Dp#9kLm@2qX!7', 10);
     run('INSERT INTO accounts (username,password,empId,roleName,enabled,createdAt,lastLogin) VALUES (?,?,?,?,?,?,?)', ['admin',hash,'','系统管理员',1,'2026-01-01','']);
   }
   const rqc = get('SELECT COUNT(*) as c FROM requirements').c;
@@ -136,6 +136,18 @@ function authMiddleware(req, res, next) {
 
 function parseJsonField(val) { if (!val) return []; try { return JSON.parse(val); } catch { return []; } }
 
+// 密码强度校验：返回错误信息字符串，或 null 表示通过
+const COMMON_PW = ['password','123456','12345678','qwerty','abc123','admin','admin123','password123','administrator','letmein','welcome','iloveyou','password1','Password1','Password123','Admin@123','Admin123','qwerty123','000000','111111','passw0rd','p@ssw0rd'];
+function validatePassword(pw) {
+  if (!pw || pw.length < 8) return '密码至少8位，且需包含大小写字母、数字和特殊字符';
+  if (!/[a-z]/.test(pw)) return '密码需包含小写字母';
+  if (!/[A-Z]/.test(pw)) return '密码需包含大写字母';
+  if (!/[0-9]/.test(pw)) return '密码需包含数字';
+  if (!/[^A-Za-z0-9]/.test(pw)) return '密码需包含特殊字符（如 !@#$%^&*）';
+  if (COMMON_PW.includes(pw.toLowerCase())) return '该密码过于常见，已被大量泄露，请更换';
+  return null;
+}
+
 // ==================== Auth ====================
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
@@ -154,7 +166,7 @@ app.post('/api/login', (req, res) => {
 app.post('/api/register', (req, res) => {
   const { username, password, empId } = req.body;
   if (!username || !password) return res.status(400).json({ error: '请填写用户名和密码' });
-  if (password.length < 6) return res.status(400).json({ error: '密码至少6位' });
+  const pe = validatePassword(password); if (pe) return res.status(400).json({ error: pe });
   if (get('SELECT username FROM accounts WHERE username = ?', [username])) return res.status(400).json({ error: '用户名已存在' });
   const hash = bcrypt.hashSync(password, 10);
   let roleName = '';
@@ -240,14 +252,14 @@ app.get('/api/accounts', authMiddleware, (req, res) => { res.json(all('SELECT us
 app.post('/api/accounts', authMiddleware, (req, res) => {
   const { username, password, empId, roleName, enabled } = req.body;
   if (!username) return res.status(400).json({ error: '请填写用户名' });
-  if (!password || password.length < 6) return res.status(400).json({ error: '密码至少6位' });
+  const pe = validatePassword(password); if (pe) return res.status(400).json({ error: pe });
   if (get('SELECT username FROM accounts WHERE username=?', [username])) return res.status(400).json({ error: '用户名已存在' });
   run('INSERT INTO accounts (username,password,empId,roleName,enabled,createdAt,lastLogin) VALUES (?,?,?,?,?,?,?)', [username, bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, new Date().toISOString().split('T')[0], '']);
   res.json({ message: '创建成功' });
 });
 app.put('/api/accounts/:username', authMiddleware, (req, res) => {
   const { password, empId, roleName, enabled } = req.body;
-  if (password) run('UPDATE accounts SET password=?,empId=?,roleName=?,enabled=? WHERE username=?', [bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]);
+  if (password) { const pe = validatePassword(password); if (pe) return res.status(400).json({ error: pe }); run('UPDATE accounts SET password=?,empId=?,roleName=?,enabled=? WHERE username=?', [bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]); }
   else run('UPDATE accounts SET empId=?,roleName=?,enabled=? WHERE username=?', [empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]);
   res.json({ message: '更新成功' });
 });
@@ -268,6 +280,6 @@ initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`\n🐛 DefectPro 缺陷管理系统已启动！`);
     console.log(`📍 本地访问：http://localhost:${PORT}`);
-    console.log(`🔑 默认管理员账号：admin / admin123\n`);
+    console.log(`🔑 默认管理员账号：admin （首次登录后请尽快修改密码）\n`);
   });
 }).catch(err => { console.error('数据库初始化失败:', err); process.exit(1); });
