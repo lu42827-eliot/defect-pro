@@ -265,6 +265,48 @@ app.put('/api/accounts/:username', authMiddleware, (req, res) => {
 });
 app.delete('/api/accounts/:username', authMiddleware, (req, res) => { if (req.params.username === 'admin') return res.status(400).json({ error: '不能删除管理员账号' }); run('DELETE FROM accounts WHERE username=?', [req.params.username]); res.json({ message: '删除成功' }); });
 
+// ==================== 数据备份（导入/导出 JSON） ====================
+const BACKUP_TABLES = ['roles', 'personnel', 'versions', 'requirements', 'defects', 'workflows', 'accounts'];
+const _colsCache = {};
+function colsOf(t) {
+  if (!_colsCache[t]) _colsCache[t] = all('PRAGMA table_info(' + t + ')').map(c => c.name);
+  return _colsCache[t];
+}
+app.get('/api/backup/export', authMiddleware, (req, res) => {
+  const tables = {};
+  for (const t of BACKUP_TABLES) tables[t] = all('SELECT * FROM ' + t);
+  res.setHeader('Content-Disposition', 'attachment; filename="defectpro-backup-' + new Date().toISOString().slice(0, 10) + '.json"');
+  res.json({ version: 1, exportedAt: new Date().toISOString(), tables });
+});
+app.post('/api/backup/import', authMiddleware, (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || !body.tables) return res.status(400).json({ error: '备份文件格式不正确' });
+    db.run('BEGIN');
+    for (const t of BACKUP_TABLES) {
+      const rows = body.tables[t];
+      if (!Array.isArray(rows)) continue;
+      const validCols = colsOf(t);
+      db.run('DELETE FROM ' + t);
+      for (const row of rows) {
+        const keys = Object.keys(row).filter(k => validCols.includes(k));
+        if (!keys.length) continue;
+        const placeholders = keys.map(() => '?').join(',');
+        const vals = keys.map(k => row[k]);
+        db.run('INSERT INTO ' + t + ' (' + keys.join(',') + ') VALUES (' + placeholders + ')', vals);
+      }
+    }
+    db.run('COMMIT');
+    saveDb();
+    const counts = {};
+    for (const t of BACKUP_TABLES) counts[t] = Array.isArray(body.tables[t]) ? body.tables[t].length : 0;
+    res.json({ message: '导入成功', counts });
+  } catch (e) {
+    try { db.run('ROLLBACK'); } catch (_) {}
+    res.status(500).json({ error: '导入失败：' + e.message });
+  }
+});
+
 // ==================== Counters ====================
 app.get('/api/counters', authMiddleware, (req, res) => {
   const reqMax = get("SELECT MAX(CAST(SUBSTR(id, 5) AS INTEGER)) as m FROM requirements")?.m || 0;

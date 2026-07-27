@@ -165,7 +165,14 @@ textarea.form-control{resize:vertical;min-height:80px}
     <main class="main-content">
       <!-- Dashboard -->
       <div v-if="currentPage==='dashboard'" key="dashboard">
-        <div class="page-header"><h2>📊 仪表盘</h2><span style="color:var(--text2);font-size:13px">欢迎回来，{{ currentUser.displayName }}</span></div>
+        <div class="page-header"><h2>📊 仪表盘</h2>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="color:var(--text2);font-size:13px">欢迎回来，{{ currentUser.displayName }}</span>
+            <button class="btn btn-outline" @click="exportBackup">⬇️ 导出备份</button>
+            <button class="btn btn-outline" @click="triggerImport">⬆️ 导入备份</button>
+            <input ref="importFile" type="file" accept="application/json,.json" style="display:none" @change="importBackup">
+          </div>
+        </div>
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-icon blue">👥</div><div class="stat-info"><h3>{{ personnel.length }}</h3><p>人员总数</p></div></div>
           <div class="stat-card"><div class="stat-icon green">📋</div><div class="stat-info"><h3>{{ requirements.length }}</h3><p>需求总数</p></div></div>
@@ -514,6 +521,36 @@ createApp({
       } catch (e) { showToast('数据加载失败: ' + e.message, 'error'); }
     }
 
+    // ==================== 数据备份（导入/导出 JSON） ====================
+    const importFile = ref(null);
+    async function exportBackup() {
+      try {
+        const data = await api('/api/backup/export');
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'defectpro-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('备份已导出');
+      } catch (e) { showToast('导出失败: ' + e.message, 'error'); }
+    }
+    function triggerImport() { importFile.value && importFile.value.click(); }
+    async function importBackup(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!confirm('导入将覆盖当前所有数据，确定继续吗？建议先导出一份备份。')) { e.target.value = ''; return; }
+      try {
+        const text = await file.text();
+        const json = JSON.parse(text);
+        const r = await api('/api/backup/import', { method: 'POST', body: JSON.stringify(json) });
+        showToast('导入成功：' + (r.counts ? ('角色' + r.counts.roles + '/人员' + r.counts.personnel + '/版本' + r.counts.versions + '/需求' + r.counts.requirements + '/缺陷' + r.counts.defects + '/流程' + r.counts.workflows + '/账号' + r.counts.accounts) : ''));
+        await loadAllData();
+      } catch (err) { showToast('导入失败: ' + err.message, 'error'); }
+      e.target.value = '';
+    }
+
     // Auto login check
     onMounted(async () => {
       if (token.value) {
@@ -849,6 +886,7 @@ createApp({
       editingDefect, defectForm, defectDetail, transferDefectData, defectTransferForm, reassignDefectData, reassignForm,
       openDefectModal, saveDefect, deleteDefect, viewDefectDetail, transferDefect, reassignDefect, getNextDefectStatuses, confirmDefectTransfer, confirmReassign,
       showAccountModal, editingAccount, accountForm, openAccountModal, saveAccount, toggleAccount, resetPassword, deleteAccount,
+      importFile, exportBackup, triggerImport, importBackup,
       severityBadge, statusBadge, priorityBadge, reqStatusBadge
     };
   }
