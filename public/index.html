@@ -355,7 +355,7 @@ textarea.form-control{resize:vertical;min-height:80px}
             <div class="modal-body">
               <div class="form-group"><label>需求标题</label><input class="form-control" v-model="reqForm.title" placeholder="需求标题"></div>
               <div class="form-row"><div class="form-group"><label>优先级</label><select class="form-control" v-model="reqForm.priority"><option>低</option><option>中</option><option>高</option><option>紧急</option></select></div><div class="form-group"><label>状态</label><select class="form-control" v-model="reqForm.status"><option v-for="s in reqStatuses" :key="s">{{ s }}</option></select></div></div>
-              <div class="form-row"><div class="form-group"><label>所属版本</label><select class="form-control" v-model="reqForm.version"><option value="">请选择</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }} - {{ v.name }}</option></select></div><div class="form-group"><label>负责人</label><select class="form-control" v-model="reqForm.owner"><option value="">请选择</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div></div>
+              <div class="form-row"><div class="form-group"><label>所属版本</label><select class="form-control" v-model="reqForm.version"><option value="">请选择</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }} - {{ v.name }}</option></select></div><div class="form-group"><label>负责人</label><input type="text" class="form-control" v-model="reqForm.owner" placeholder="搜索人员..." list="reqOwnerList"><datalist id="reqOwnerList"><option value="">不指派</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></datalist></div></div>
               <div class="form-group"><label>需求描述</label><textarea class="form-control" v-model="reqForm.description" placeholder="详细描述"></textarea></div>
             </div>
             <div class="modal-footer"><button class="btn btn-outline" @click="showReqModal=false">取消</button><button class="btn btn-primary" @click="saveReq">保存</button></div>
@@ -443,7 +443,22 @@ textarea.form-control{resize:vertical;min-height:80px}
               <div class="form-group"><label>缺陷标题</label><input class="form-control" v-model="defectForm.title" placeholder="简要描述缺陷"></div>
               <div class="form-row"><div class="form-group"><label>严重程度<span v-if="editingDefect && currentUserEmpId && editingDefect.reporter !== currentUserEmpId" style="color:var(--text2);font-size:12px;">（仅创建人可修改）</span></label><select class="form-control" v-model="defectForm.severity" :disabled="editingDefect && currentUserEmpId && editingDefect.reporter !== currentUserEmpId"><option v-for="s in severityLevels" :key="s">{{ s }}</option></select></div><div class="form-group"><label>状态</label><select class="form-control" v-model="defectForm.status"><option v-for="s in defectStatuses" :key="s">{{ s }}</option></select></div></div>
               <div class="form-row"><div class="form-group"><label>所属版本</label><select class="form-control" v-model="defectForm.version"><option value="">请选择</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }}</option></select></div><div class="form-group"><label>关联需求</label><select class="form-control" v-model="defectForm.relatedReq"><option value="">无关联</option><option v-for="r in requirements" :key="r.id" :value="r.id">{{ r.id }} - {{ r.title }}</option></select></div></div>
-              <div class="form-row"><div class="form-group"><label>指派给</label><select class="form-control" v-model="defectForm.assignee"><option value="">请选择</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div><div class="form-group"><label>创建人</label><select class="form-control" v-model="defectForm.reporter"><option value="">请选择</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div></div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>指派给</label>
+                  <input type="text" class="form-control" v-model="defectForm.assignee" placeholder="搜索人员..." list="assigneeList">
+                  <datalist id="assigneeList">
+                    <option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option>
+                  </datalist>
+                </div>
+                <div class="form-group">
+                  <label>创建人</label>
+                  <input type="text" class="form-control" v-model="defectForm.reporter" placeholder="搜索人员..." list="reporterList">
+                  <datalist id="reporterList">
+                    <option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option>
+                  </datalist>
+                </div>
+              </div>
               <div class="form-group"><label>详细描述</label><textarea class="form-control" v-model="defectForm.description" placeholder="复现步骤、期望结果、实际结果..."></textarea></div>
             </div>
             <div class="modal-footer"><button class="btn btn-outline" @click="showDefectModal=false">取消</button><button class="btn btn-primary" @click="saveDefect">保存</button></div>
@@ -493,14 +508,14 @@ textarea.form-control{resize:vertical;min-height:80px}
                     <option v-for="s in severityLevels" :key="s">{{ s }}</option>
                   </select>
                 </div>
-                <div v-else style="color:var(--text2);font-size:13px;line-height:2.5">严重程度仅创建人可修改</div>
               </div>
               <div class="form-group">
                 <label>转派给</label>
-                <select class="form-control" v-model="defectActionForm.newAssignee">
+                <input type="text" class="form-control" v-model="defectActionForm.newAssignee" placeholder="搜索人员...（留空不变更）" list="actionAssigneeList">
+                <datalist id="actionAssigneeList">
                   <option value="">不变更</option>
                   <option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option>
-                </select>
+                </datalist>
               </div>
               <div class="form-group">
                 <label>备注说明</label>
