@@ -500,12 +500,12 @@ textarea.form-control{resize:vertical;min-height:80px}
       <div v-if="currentPage==='accounts'" key="accounts">
         <div class="page-header">
           <h2>🔐 账号管理</h2>
-          <!-- 仅管理员能看到新增按钮 -->
-          <button v-if="isAdminUser" class="btn btn-primary" @click="openAccountModal()">+ 新增账号</button>
+          <!-- 级别1/2（管理员/PM/开发/测试）可新增账号 -->
+          <button v-if="canCreateAccount" class="btn btn-primary" @click="openAccountModal()">+ 新增账号</button>
         </div>
         <div class="card">
-          <!-- 管理员视图：显示所有账号列表 -->
-          <div v-if="isAdminUser">
+          <!-- 级别1/2：显示账号列表 -->
+          <div v-if="canManageAccounts">
             <div v-if="accounts.length===0" class="empty-state"><div class="icon">🔐</div><p>暂无账号数据</p></div>
             <div class="table-wrapper" v-else>
               <table>
@@ -518,59 +518,66 @@ textarea.form-control{resize:vertical;min-height:80px}
                   <td>{{ a.createdAt }}</td>
                   <td>{{ a.lastLogin||'从未登录' }}</td>
                   <td><div class="btn-group">
-                    <button class="btn btn-outline btn-sm" @click="openAccountModal(a)">编辑</button>
-                    <button class="btn btn-sm" :class="a.enabled?'btn-warning':'btn-success'" @click="toggleAccount(a)">{{ a.enabled?'禁用':'启用' }}</button>
-                    <button class="btn btn-info btn-sm" @click="resetPassword(a)">重置密码</button>
-                    <button class="btn btn-danger btn-sm" @click="deleteAccount(a.username)" :disabled="a.username==='admin'">删除</button>
+                    <!-- 自己的账号：只能改密码 -->
+                    <button v-if="a.username===currentUser.username" class="btn btn-info btn-sm" @click="openSelfPasswordModal()">修改密码</button>
+                    <!-- 有权限管理的账号：完整操作 -->
+                    <template v-if="canActOnAccount(a.roleName) && a.username!==currentUser.username">
+                      <button class="btn btn-outline btn-sm" @click="openAccountModal(a)">编辑</button>
+                      <button class="btn btn-sm" :class="a.enabled?'btn-warning':'btn-success'" @click="toggleAccount(a)">{{ a.enabled?'禁用':'启用' }}</button>
+                      <button class="btn btn-info btn-sm" @click="resetPassword(a)">重置密码</button>
+                      <button class="btn btn-danger btn-sm" @click="deleteAccount(a.username)" :disabled="a.username==='admin'">删除</button>
+                    </template>
+                    <!-- 无法操作（高级别账号）：灰色提示 -->
+                    <span v-if="!canActOnAccount(a.roleName) && a.username!==currentUser.username" style="color:var(--text2);font-size:12px;">无权操作</span>
                   </div></td>
                 </tr></tbody>
               </table>
             </div>
           </div>
-          <!-- 非管理员视图：仅显示自己的账号信息（只读） -->
+          <!-- 级别3（观察者）：仅显示自己的账号信息 -->
           <div v-else>
             <div v-if="currentUserAccount">
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-                <div style="padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-                  <p style="color: var(--text2); font-size: 12px; margin-bottom: 4px;">用户名</p>
-                  <p style="font-size: 14px; font-weight: 500;">{{ currentUserAccount.username }}</p>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:20px;">
+                <div style="padding:14px;border:1px solid var(--border);border-radius:8px;background:#fafafa;">
+                  <p style="color:var(--text2);font-size:12px;margin-bottom:4px;">用户名</p>
+                  <p style="font-size:15px;font-weight:600;">{{ currentUserAccount.username }}</p>
                 </div>
-                <div style="padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-                  <p style="color: var(--text2); font-size: 12px; margin-bottom: 4px;">关联人员</p>
-                  <p style="font-size: 14px; font-weight: 500;">{{ currentUserAccount.empId ? getPersonName(currentUserAccount.empId) : '未关联' }}</p>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:8px;background:#fafafa;">
+                  <p style="color:var(--text2);font-size:12px;margin-bottom:4px;">关联人员</p>
+                  <p style="font-size:15px;font-weight:600;">{{ currentUserAccount.empId ? getPersonName(currentUserAccount.empId) : '未关联' }}</p>
                 </div>
-                <div style="padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-                  <p style="color: var(--text2); font-size: 12px; margin-bottom: 4px;">角色</p>
-                  <p style="font-size: 14px; font-weight: 500;">{{ currentUserAccount.roleName||'-' }}</p>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:8px;background:#fafafa;">
+                  <p style="color:var(--text2);font-size:12px;margin-bottom:4px;">角色</p>
+                  <p style="font-size:15px;font-weight:600;">{{ currentUserAccount.roleName||'-' }}</p>
                 </div>
-                <div style="padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-                  <p style="color: var(--text2); font-size: 12px; margin-bottom: 4px;">账号状态</p>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:8px;background:#fafafa;">
+                  <p style="color:var(--text2);font-size:12px;margin-bottom:4px;">账号状态</p>
                   <p><span :class="currentUserAccount.enabled?'badge badge-success':'badge badge-secondary'">{{ currentUserAccount.enabled?'启用':'禁用' }}</span></p>
                 </div>
-                <div style="padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-                  <p style="color: var(--text2); font-size: 12px; margin-bottom: 4px;">创建时间</p>
-                  <p style="font-size: 14px; font-weight: 500;">{{ currentUserAccount.createdAt }}</p>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:8px;background:#fafafa;">
+                  <p style="color:var(--text2);font-size:12px;margin-bottom:4px;">创建时间</p>
+                  <p style="font-size:15px;font-weight:600;">{{ currentUserAccount.createdAt }}</p>
                 </div>
-                <div style="padding: 12px; border: 1px solid var(--border); border-radius: 6px;">
-                  <p style="color: var(--text2); font-size: 12px; margin-bottom: 4px;">最后登录</p>
-                  <p style="font-size: 14px; font-weight: 500;">{{ currentUserAccount.lastLogin||'从未登录' }}</p>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:8px;background:#fafafa;">
+                  <p style="color:var(--text2);font-size:12px;margin-bottom:4px;">最后登录</p>
+                  <p style="font-size:15px;font-weight:600;">{{ currentUserAccount.lastLogin||'从未登录' }}</p>
                 </div>
               </div>
-              <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 6px;">
-                <p style="font-size: 13px; color: var(--text2); margin-bottom: 12px;">💡 提示：作为非管理员用户，您只能查看自己的账号信息。如需修改账号信息，请联系系统管理员。</p>
-              </div>
+              <button class="btn btn-primary" @click="openSelfPasswordModal()">🔑 修改我的密码</button>
+              <p style="margin-top:14px;font-size:13px;color:var(--text2);">💡 如需修改其他信息（角色、关联人员等），请联系系统管理员。</p>
             </div>
             <div v-else class="empty-state"><div class="icon">🔐</div><p>暂无账号数据</p></div>
           </div>
         </div>
-        <!-- Account Modal - 仅管理员可用 -->
-        <div v-if="isAdminUser && showAccountModal" class="modal-overlay" @click.self="showAccountModal=false">
+
+        <!-- 新增/编辑账号 Modal（级别1/2可用） -->
+        <div v-if="canCreateAccount && showAccountModal" class="modal-overlay" @click.self="showAccountModal=false">
           <div class="modal">
             <div class="modal-header"><h3>{{ editingAccount?'编辑账号':'新增账号' }}</h3><button class="modal-close" @click="showAccountModal=false">&times;</button></div>
             <div class="modal-body">
               <div class="form-row">
                 <div class="form-group"><label>用户名</label><input class="form-control" v-model="accountForm.username" :disabled="!!editingAccount" placeholder="登录用户名"></div>
-                <div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><input type="password" class="form-control" v-model="accountForm.password" :placeholder="editingAccount?'留空不修改':'至少6位'"></div>
+                <div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><input type="password" class="form-control" v-model="accountForm.password" :placeholder="editingAccount?'留空不修改':'请输入密码'"></div>
               </div>
               <div class="form-row">
                 <div class="form-group"><label>关联人员</label><select class="form-control" v-model="accountForm.empId"><option value="">不关联</option><option v-for="p in personnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div>
@@ -579,6 +586,18 @@ textarea.form-control{resize:vertical;min-height:80px}
               <div class="form-group"><label>状态</label><select class="form-control" v-model="accountForm.enabled"><option :value="true">启用</option><option :value="false">禁用</option></select></div>
             </div>
             <div class="modal-footer"><button class="btn btn-outline" @click="showAccountModal=false">取消</button><button class="btn btn-primary" @click="saveAccount">保存</button></div>
+          </div>
+        </div>
+
+        <!-- 修改自己密码 Modal（所有人可用） -->
+        <div v-if="showSelfPasswordModal" class="modal-overlay" @click.self="showSelfPasswordModal=false">
+          <div class="modal" style="max-width:420px;">
+            <div class="modal-header"><h3>🔑 修改我的密码</h3><button class="modal-close" @click="showSelfPasswordModal=false">&times;</button></div>
+            <div class="modal-body">
+              <div class="form-group"><label>新密码</label><input type="password" class="form-control" v-model="selfPasswordForm.newPwd" placeholder="请输入新密码"></div>
+              <div class="form-group"><label>确认新密码</label><input type="password" class="form-control" v-model="selfPasswordForm.confirmPwd" placeholder="再次输入新密码"></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showSelfPasswordModal=false">取消</button><button class="btn btn-primary" @click="saveSelfPassword">确认修改</button></div>
           </div>
         </div>
       </div>
@@ -1092,22 +1111,70 @@ createApp({
       return ROLE_LEVELS[roleName] || 999;
     }
 
-    // 获取当前用户可以创建的角色列表（只能创建级别不高于自己的角色）
+    // 获取当前用户可以创建的角色列表（只能创建级别不高于自己的角色，且自己级别<=2才有列表）
     const availableRoles = computed(() => {
       const userLevel = getRoleLevel(currentUser.roleName);
-      return roles.value.filter(r => {
-        const roleLevel = getRoleLevel(r.name);
-        return roleLevel >= userLevel; // 级别不高于自己
-      });
+      if (userLevel >= 3) return []; // 观察者无法创建任何账号
+      return roles.value.filter(r => getRoleLevel(r.name) >= userLevel);
     });
 
-    // 判断当前用户是否为管理员
+    // 当前用户是否为管理员（级别1）
     const isAdminUser = computed(() => currentUser.roleName === '系统管理员');
+
+    // 当前用户是否可以创建账号（级别1/2）
+    const canCreateAccount = computed(() => getRoleLevel(currentUser.roleName) <= 2);
+
+    // 当前用户是否可以看到账号列表（级别1/2）
+    const canManageAccounts = computed(() => getRoleLevel(currentUser.roleName) <= 2);
+
+    // 判断当前用户是否能操作指定账号（级别不高于自己，且非本人）
+    function canActOnAccount(targetRoleName) {
+      const userLevel = getRoleLevel(currentUser.roleName);
+      const targetLevel = getRoleLevel(targetRoleName);
+      return userLevel <= 2 && targetLevel >= userLevel;
+    }
 
     // 获取当前登录用户的账号信息
     const currentUserAccount = computed(() => {
       return accounts.value.find(a => a.username === currentUser.username);
     });
+
+    // 修改自己密码的 Modal
+    const showSelfPasswordModal = ref(false);
+    const selfPasswordForm = reactive({ newPwd: '', confirmPwd: '' });
+
+    function openSelfPasswordModal() {
+      selfPasswordForm.newPwd = '';
+      selfPasswordForm.confirmPwd = '';
+      showSelfPasswordModal.value = true;
+    }
+
+    function saveSelfPassword() {
+      if (!selfPasswordForm.newPwd) return showToast('请输入新密码', 'error');
+      if (selfPasswordForm.newPwd.length < 6) return showToast('密码至少6位', 'error');
+      if (selfPasswordForm.newPwd !== selfPasswordForm.confirmPwd) return showToast('两次密码不一致', 'error');
+
+      if (!isServerMode) {
+        // 本地模式
+        const acc = accounts.value.find(a => a.username === currentUser.username);
+        if (acc) acc.password = selfPasswordForm.newPwd;
+        showSelfPasswordModal.value = false;
+        showToast('密码修改成功');
+        return;
+      }
+
+      // 服务器模式
+      const token = localStorage.getItem('token');
+      fetch('/api/accounts/' + currentUser.username, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ password: selfPasswordForm.newPwd })
+      }).then(r => r.json()).then(data => {
+        if (data.error) { showToast(data.error, 'error'); return; }
+        showSelfPasswordModal.value = false;
+        showToast('密码修改成功');
+      }).catch(() => showToast('操作失败', 'error'));
+    }
 
     function openAccountModal(a) {
       if (a) { editingAccount.value = a; Object.assign(accountForm, { username: a.username, password: '', empId: a.empId, roleName: a.roleName, enabled: a.enabled }); }
@@ -1225,6 +1292,8 @@ createApp({
       // Accounts
       showAccountModal, editingAccount, accountForm, openAccountModal, saveAccount, toggleAccount, resetPassword, deleteAccount,
       isAdminUser, currentUserAccount, availableRoles, getRoleLevel,
+      canCreateAccount, canManageAccounts, canActOnAccount,
+      showSelfPasswordModal, selfPasswordForm, openSelfPasswordModal, saveSelfPassword,
       // Badges
       severityBadge, statusBadge, priorityBadge, reqStatusBadge
     };

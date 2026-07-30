@@ -278,12 +278,16 @@ app.post('/api/accounts', authMiddleware, (req, res) => {
   const { username, password, empId, roleName, enabled } = req.body;
   if (!username) return res.status(400).json({ error: '请填写用户名' });
 
-  // 权限检查：非管理员需要验证能否创建指定角色的账号
-  if (req.user.roleName !== '系统管理员') {
-    const userLevel = getRoleLevel(req.user.roleName);
-    const targetLevel = getRoleLevel(roleName);
+  const userLevel = getRoleLevel(req.user.roleName);
 
-    // 只有当目标角色级别 >= 当前用户级别时（数字越小级别越高），才允许创建
+  // 级别3（观察者）完全不能创建账号
+  if (userLevel >= 3) {
+    return res.status(403).json({ error: '您的权限不足，无法创建账号' });
+  }
+
+  // 级别2（PM/开发/测试）只能创建级别2-3的账号
+  if (userLevel > 1) {
+    const targetLevel = getRoleLevel(roleName);
     if (targetLevel < userLevel) {
       return res.status(403).json({ error: '您的权限不足，无法创建比自己级别更高的账号' });
     }
