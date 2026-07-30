@@ -136,13 +136,13 @@ textarea.form-control{resize:vertical;min-height:80px}
         <h1>📝 注册账号</h1>
         <p class="subtitle">创建新的系统账号</p>
         <div class="form-group"><label>用户名</label><input v-model="regForm.username" placeholder="请输入用户名"></div>
-        <div class="form-group"><label>密码</label><div class="pwd-input-wrap"><input type="text" :class="{'pwd-mask':!showRegPwd}" v-model="regForm.password" placeholder="至少8位，含大小写字母、数字、特殊字符" autocomplete="off" name="reg_pwd_x" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="pwd-eye" @click="showRegPwd=!showRegPwd">{{ showRegPwd?'🙈':'👁️' }}</button></div></div>
+        <div class="form-group"><label>密码</label><div class="pwd-input-wrap"><button type="button" class="login-btn pwd-btn" @click="setRegPwd" style="margin-top:0;font-size:13px;padding:10px 14px">{{ regForm.password ? '●●●●●●●●（点击修改）' : '🔒 点击设置密码' }}</button><button type="button" class="pwd-eye" @click="regForm.password=''" v-if="regForm.password" title="清除" style="right:6px">✕</button></div></div>
         <div class="pwd-meter" v-if="regForm.password">
           <div class="pwd-bar"><span :style="{ width: (pwdScore(regForm.password)/4*100)+'%', background: PW_COLORS[pwdScore(regForm.password)] }"></span></div>
           <span class="pwd-label" :style="{ color: PW_COLORS[pwdScore(regForm.password)] }">强度：{{ PW_LABELS[pwdScore(regForm.password)] }}</span>
           <span class="pwd-tip" v-if="validatePwd(regForm.password)">{{ validatePwd(regForm.password) }}</span>
         </div>
-        <div class="form-group"><label>确认密码</label><input type="text" :class="{'pwd-mask':!showRegPwd}" v-model="regForm.password2" placeholder="再次输入密码" @keyup.enter="doRegister" autocomplete="off" name="reg_pwd2_x" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+        <div class="form-group"><label>确认密码</label><div class="pwd-input-wrap"><button type="button" class="login-btn pwd-btn" @click="setRegPwd2" style="margin-top:0;font-size:13px;padding:10px 14px">{{ regForm.password2 ? '●●●●●●●●（点击修改）' : '🔒 再次点击设置密码' }}</button><button type="button" class="pwd-eye" @click="regForm.password2=''" v-if="regForm.password2" title="清除" style="right:6px">✕</button></div></div>
         <div class="form-group"><label>关联人员</label><select v-model="regForm.empId"><option value="">请选择（可选）</option><option v-for="p in personnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></select></div>
         <button class="login-btn" @click="doRegister" :disabled="logging">注 册</button>
         <p v-if="loginError" class="login-error">{{ loginError }}</p>
@@ -393,7 +393,7 @@ textarea.form-control{resize:vertical;min-height:80px}
         <div class="modal-overlay" v-if="showAccountModal" @click.self="showAccountModal=false">
           <div class="modal"><div class="modal-header"><h3>{{ editingAccount?'编辑账号':'新增账号' }}</h3><button class="modal-close" @click="showAccountModal=false">&times;</button></div>
             <div class="modal-body">
-              <div class="form-row"><div class="form-group"><label>用户名</label><input class="form-control" v-model="accountForm.username" :disabled="!!editingAccount" placeholder="登录用户名" autocomplete="off"></div><div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><div class="pwd-input-wrap"><input type="text" class="form-control" :class="{'pwd-mask':!showAcctPwd}" v-model="accountForm.password" :placeholder="editingAccount?'留空不修改':'至少8位，含大小写/数字/特殊字符'" autocomplete="off" name="acct_pwd_x" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="pwd-eye" @click="showAcctPwd=!showAcctPwd">{{ showAcctPwd?'🙈':'👁️' }}</button></div></div></div>
+              <div class="form-row"><div class="form-group"><label>用户名</label><input class="form-control" v-model="accountForm.username" :disabled="!!editingAccount" placeholder="登录用户名" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')"></div><div class="form-group"><label>密码{{ editingAccount?'（留空则不修改）':'' }}</label><div class="pwd-input-wrap"><button type="button" class="form-control pwd-btn" @click="setAccountPwd" style="text-align:left;color:var(--text)">{{ accountForm.password ? '●●●●●●●●（点击修改）' : (editingAccount?'留空不修改':'🔒 点击设置密码') }}</button><button type="button" class="pwd-eye" @click="clearAccountPwd" v-if="accountForm.password" title="清除密码" style="right:6px">✕</button></div></div></div>
               <div class="pwd-meter" v-if="accountForm.password">
                 <div class="pwd-bar"><span :style="{ width: (pwdScore(accountForm.password)/4*100)+'%', background: PW_COLORS[pwdScore(accountForm.password)] }"></span></div>
                 <span class="pwd-label" :style="{ color: PW_COLORS[pwdScore(accountForm.password)] }">强度：{{ PW_LABELS[pwdScore(accountForm.password)] }}</span>
@@ -836,6 +836,29 @@ createApp({
     const showAccountModal = ref(false); const editingAccount = ref(null);
     const accountForm = reactive({ username:'',password:'',empId:'',roleName:'',enabled:true });
     const showAcctPwd = ref(false);
+    function setAccountPwd() {
+      const hint = editingAccount.value ? '请输入新密码（留空取消）' : '请输入密码（至少8位，含大小写字母、数字和特殊字符）';
+      const pw = prompt(hint);
+      if (pw === null) return;
+      if (pw === '') { accountForm.password = ''; return; }
+      const m = validatePwd(pw);
+      if (m) { showToast(m, 'error'); return; }
+      accountForm.password = pw;
+    }
+    function clearAccountPwd() { accountForm.password = ''; }
+    function setRegPwd() {
+      const pw = prompt('请输入密码（至少8位，含大小写字母、数字和特殊字符）：');
+      if (pw === null) return;
+      if (pw === '') { regForm.password = ''; return; }
+      const m = validatePwd(pw);
+      if (m) { showToast(m, 'error'); return; }
+      regForm.password = pw;
+    }
+    function setRegPwd2() {
+      const pw = prompt('请再次输入密码以确认：');
+      if (pw === null) return;
+      regForm.password2 = pw;
+    }
     function openAccountModal(a) {
       if (a) { editingAccount.value = a; Object.assign(accountForm, { username:a.username,password:'',empId:a.empId,roleName:a.roleName,enabled:a.enabled }); }
       else { editingAccount.value = null; Object.assign(accountForm, { username:'',password:'',empId:'',roleName:'',enabled:true }); }

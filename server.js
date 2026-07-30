@@ -13,6 +13,20 @@ const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 const dbPath = path.join(dataDir, 'defectpro.db');
 
+// 角色级别定义（数字越小级别越高）
+const ROLE_LEVELS = {
+  '系统管理员': 1,
+  'PM': 2,
+  '项目经理': 2,
+  '开发工程师': 2,
+  '测试工程师': 2,
+  '观察者': 3
+};
+
+function getRoleLevel(roleName) {
+  return ROLE_LEVELS[roleName] || 999; // 未定义的角色视为最低级别
+}
+
 let db; // sql.js Database instance
 
 // Helper: save db to file
@@ -248,10 +262,33 @@ app.put('/api/workflows/:id', authMiddleware, (req, res) => { const { name, type
 app.delete('/api/workflows/:id', authMiddleware, (req, res) => { run('DELETE FROM workflows WHERE id=?', [req.params.id]); res.json({ message: '删除成功' }); });
 
 // ==================== Accounts ====================
-app.get('/api/accounts', authMiddleware, (req, res) => { res.json(all('SELECT username,empId,roleName,enabled,createdAt,lastLogin FROM accounts').map(a => ({ ...a, enabled: !!a.enabled }))); });
+app.get('/api/accounts', authMiddleware, (req, res) => {
+  const allAccounts = all('SELECT username,empId,roleName,enabled,createdAt,lastLogin FROM accounts').map(a => ({ ...a, enabled: !!a.enabled }));
+
+  // 系统管理员：查看所有账号
+  if (req.user.roleName === '系统管理员') {
+    return res.json(allAccounts);
+  }
+
+  // 其他角色：只能查看自己的账号
+  const selfAccount = allAccounts.find(a => a.username === req.user.username);
+  res.json(selfAccount ? [selfAccount] : []);
+});
 app.post('/api/accounts', authMiddleware, (req, res) => {
   const { username, password, empId, roleName, enabled } = req.body;
   if (!username) return res.status(400).json({ error: '请填写用户名' });
+
+  // 权限检查：非管理员需要验证能否创建指定角色的账号
+  if (req.user.roleName !== '系统管理员') {
+    const userLevel = getRoleLevel(req.user.roleName);
+    const targetLevel = getRoleLevel(roleName);
+
+    // 只有当目标角色级别 >= 当前用户级别时（数字越小级别越高），才允许创建
+    if (targetLevel < userLevel) {
+      return res.status(403).json({ error: '您的权限不足，无法创建比自己级别更高的账号' });
+    }
+  }
+
   const pe = validatePassword(password); if (pe) return res.status(400).json({ error: pe });
   if (get('SELECT username FROM accounts WHERE username=?', [username])) return res.status(400).json({ error: '用户名已存在' });
   run('INSERT INTO accounts (username,password,empId,roleName,enabled,createdAt,lastLogin) VALUES (?,?,?,?,?,?,?)', [username, bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, new Date().toISOString().split('T')[0], '']);
@@ -259,11 +296,63 @@ app.post('/api/accounts', authMiddleware, (req, res) => {
 });
 app.put('/api/accounts/:username', authMiddleware, (req, res) => {
   const { password, empId, roleName, enabled } = req.body;
-  if (password) { const pe = validatePassword(password); if (pe) return res.status(400).json({ error: pe }); run('UPDATE accounts SET password=?,empId=?,roleName=?,enabled=? WHERE username=?', [bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]); }
-  else run('UPDATE accounts SET empId=?,roleName=?,enabled=? WHERE username=?', [empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]);
+  const isAdmin = req.user.roleName === '系统管理员';
+  const isSelf = req.user.username === req.params.username;
+
+  // 权限检查：只有管理员或账号本人才能修改
+  if (!isAdmin && !isSelf) {
+    return res.status(403).json({ error: '只能修改自己的账号信息，或由系统管理员操作' });
+  }
+
+  // 非管理员不能修改角色
+  if (!isAdmin && roleName) {
+    return res.status(403).json({ error: '只有管理员才能修改账号角色' });
+  }
+
+  // 如果是管理员修改其他人的角色，检查权限
+  if (isAdmin && roleName && isSelf === false) {
+    const targetLevel = getRoleLevel(roleName);
+    const userLevel = getRoleLevel(req.user.roleName);
+    if (targetLevel < userLevel) {
+      return res.status(403).json({ error: '您的权限不足，无法给账号分配比自己级别更高的角色' });
+    }
+  }
+
+  if (password) {
+    const pe = validatePassword(password);
+    if (pe) return res.status(400).json({ error: pe });
+    run('UPDATE accounts SET password=?,empId=?,roleName=?,enabled=? WHERE username=?', [bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]);
+  }
+  else {
+    run('UPDATE accounts SET empId=?,roleName=?,enabled=? WHERE username=?', [empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]);
+  }
+
   res.json({ message: '更新成功' });
 });
-app.delete('/api/accounts/:username', authMiddleware, (req, res) => { if (req.params.username === 'admin') return res.status(400).json({ error: '不能删除管理员账号' }); run('DELETE FROM accounts WHERE username=?', [req.params.username]); res.json({ message: '删除成功' }); });
+app.delete('/api/accounts/:username', authMiddleware, (req, res) => {
+  const isAdmin = req.user.roleName === '系统管理员';
+
+  // 权限检查：只有管理员才能删除账号
+  if (!isAdmin) {
+    return res.status(403).json({ error: '只有系统管理员才能删除账号' });
+  }
+
+  // 获取要删除的账号信息，检查其角色级别
+  const targetAccount = get('SELECT * FROM accounts WHERE username=?', [req.params.username]);
+  if (!targetAccount) return res.status(404).json({ error: '账号不存在' });
+
+  if (req.params.username === 'admin') return res.status(400).json({ error: '不能删除管理员账号' });
+
+  // 检查权限：只能删除级别不高于自己的账号
+  const targetLevel = getRoleLevel(targetAccount.roleName);
+  const userLevel = getRoleLevel(req.user.roleName);
+  if (targetLevel < userLevel) {
+    return res.status(403).json({ error: '您的权限不足，无法删除比自己级别更高的账号' });
+  }
+
+  run('DELETE FROM accounts WHERE username=?', [req.params.username]);
+  res.json({ message: '删除成功' });
+});
 
 // ==================== 数据备份（导入/导出 JSON） ====================
 const BACKUP_TABLES = ['roles', 'personnel', 'versions', 'requirements', 'defects', 'workflows', 'accounts'];
