@@ -1204,6 +1204,7 @@ createApp({
     }
 
     function openAccountModal(a) {
+      if (a) { editingAccount.value = a; Object.assign(accountForm, { username: a.username, password: '', empId: a.empId, roleName: a.roleName, enabled: a.enabled }); }
       else { editingAccount.value = null; Object.assign(accountForm, { username: '', password: '', empId: '', roleName: '', enabled: true }); }
       showAccountModal.value = true;
     }
