@@ -313,6 +313,11 @@ app.put('/api/accounts/:username', authMiddleware, (req, res) => {
     return res.status(403).json({ error: '只有管理员才能修改账号角色' });
   }
 
+  // 非管理员不能修改账号的启用/禁用状态（包括自己）
+  if (!isAdmin && enabled !== undefined) {
+    return res.status(403).json({ error: '只有系统管理员才能修改账号的启用状态' });
+  }
+
   // 如果是管理员修改其他人的角色，检查权限
   if (isAdmin && roleName && isSelf === false) {
     const targetLevel = getRoleLevel(roleName);
@@ -322,30 +327,44 @@ app.put('/api/accounts/:username', authMiddleware, (req, res) => {
     }
   }
 
+  // 获取当前账号已有值（用于安全合并，防止 undefined 清空字段）
+  const cur = get('SELECT * FROM accounts WHERE username=?', [req.params.username]);
+  if (!cur) return res.status(404).json({ error: '账号不存在' });
+
+  const newEmpId = empId !== undefined ? empId : cur.empId;
+  const newRoleName = roleName !== undefined ? roleName : cur.roleName;
+  const newEnabled = isAdmin && enabled !== undefined ? (enabled !== false ? 1 : 0) : cur.enabled;
+
   if (password) {
     const pe = validatePassword(password);
     if (pe) return res.status(400).json({ error: pe });
-    run('UPDATE accounts SET password=?,empId=?,roleName=?,enabled=? WHERE username=?', [bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]);
-  }
-  else {
-    run('UPDATE accounts SET empId=?,roleName=?,enabled=? WHERE username=?', [empId || '', roleName || '', enabled !== false ? 1 : 0, req.params.username]);
+    run('UPDATE accounts SET password=?,empId=?,roleName=?,enabled=? WHERE username=?', [bcrypt.hashSync(password, 10), newEmpId, newRoleName, newEnabled, req.params.username]);
+  } else {
+    run('UPDATE accounts SET empId=?,roleName=?,enabled=? WHERE username=?', [newEmpId, newRoleName, newEnabled, req.params.username]);
   }
 
   res.json({ message: '更新成功' });
 });
 app.delete('/api/accounts/:username', authMiddleware, (req, res) => {
   const isAdmin = req.user.roleName === '系统管理员';
+  const isSelf = req.user.username === req.params.username;
 
-  // 权限检查：只有管理员才能删除账号
-  if (!isAdmin) {
-    return res.status(403).json({ error: '只有系统管理员才能删除账号' });
-  }
-
-  // 获取要删除的账号信息，检查其角色级别
   const targetAccount = get('SELECT * FROM accounts WHERE username=?', [req.params.username]);
   if (!targetAccount) return res.status(404).json({ error: '账号不存在' });
 
-  if (req.params.username === 'admin') return res.status(400).json({ error: '不能删除管理员账号' });
+  // 不能删除 admin 账号（包括自注销）
+  if (req.params.username === 'admin') return res.status(400).json({ error: '不能删除/注销管理员账号' });
+
+  // 允许用户自我注销
+  if (isSelf) {
+    run('DELETE FROM accounts WHERE username=?', [req.params.username]);
+    return res.json({ message: '账号已注销' });
+  }
+
+  // 删除他人账号：仅管理员
+  if (!isAdmin) {
+    return res.status(403).json({ error: '只有系统管理员才能删除他人账号' });
+  }
 
   // 检查权限：只能删除级别不高于自己的账号
   const targetLevel = getRoleLevel(targetAccount.roleName);

@@ -518,17 +518,20 @@ textarea.form-control{resize:vertical;min-height:80px}
                   <td>{{ a.createdAt }}</td>
                   <td>{{ a.lastLogin||'从未登录' }}</td>
                   <td><div class="btn-group">
-                    <!-- 自己的账号：只能改密码 -->
+                    <!-- 自己的账号：修改密码 + 注销（admin不能注销） -->
                     <button v-if="a.username===currentUser.username" class="btn btn-info btn-sm" @click="openSelfPasswordModal()">修改密码</button>
-                    <!-- 有权限管理的账号：完整操作 -->
-                    <template v-if="canActOnAccount(a.roleName) && a.username!==currentUser.username">
-                      <button class="btn btn-outline btn-sm" @click="openAccountModal(a)">编辑</button>
-                      <button class="btn btn-sm" :class="a.enabled?'btn-warning':'btn-success'" @click="toggleAccount(a)">{{ a.enabled?'禁用':'启用' }}</button>
-                      <button class="btn btn-info btn-sm" @click="resetPassword(a)">重置密码</button>
-                      <button class="btn btn-danger btn-sm" @click="deleteAccount(a.username)" :disabled="a.username==='admin'">删除</button>
+                    <button v-if="a.username===currentUser.username && a.username!=='admin'" class="btn btn-danger btn-sm" @click="selfDeregister()">注销账号</button>
+                    <!-- 他人账号操作 -->
+                    <template v-if="a.username!==currentUser.username">
+                      <!-- 有权限编辑的账号（级别1/2可见）：编辑、重置密码 -->
+                      <button v-if="canActOnAccount(a.roleName)" class="btn btn-outline btn-sm" @click="openAccountModal(a)">编辑</button>
+                      <button v-if="canActOnAccount(a.roleName)" class="btn btn-info btn-sm" @click="resetPassword(a)">重置密码</button>
+                      <!-- 仅管理员：禁用/启用、删除 -->
+                      <button v-if="isAdminUser && a.username!=='admin'" class="btn btn-sm" :class="a.enabled?'btn-warning':'btn-success'" @click="toggleAccount(a)">{{ a.enabled?'禁用':'启用' }}</button>
+                      <button v-if="isAdminUser && a.username!=='admin'" class="btn btn-danger btn-sm" @click="deleteAccount(a.username)">删除</button>
+                      <!-- 无法操作的高级别账号 -->
+                      <span v-if="!canActOnAccount(a.roleName) && !isAdminUser" style="color:var(--text2);font-size:12px;">无权操作</span>
                     </template>
-                    <!-- 无法操作（高级别账号）：灰色提示 -->
-                    <span v-if="!canActOnAccount(a.roleName) && a.username!==currentUser.username" style="color:var(--text2);font-size:12px;">无权操作</span>
                   </div></td>
                 </tr></tbody>
               </table>
@@ -564,6 +567,7 @@ textarea.form-control{resize:vertical;min-height:80px}
                 </div>
               </div>
               <button class="btn btn-primary" @click="openSelfPasswordModal()">🔑 修改我的密码</button>
+              <button class="btn btn-danger" style="margin-left:8px" @click="selfDeregister()">🚪 注销账号</button>
               <p style="margin-top:14px;font-size:13px;color:var(--text2);">💡 如需修改其他信息（角色、关联人员等），请联系系统管理员。</p>
             </div>
             <div v-else class="empty-state"><div class="icon">🔐</div><p>暂无账号数据</p></div>
@@ -1176,8 +1180,30 @@ createApp({
       }).catch(() => showToast('操作失败', 'error'));
     }
 
+    // 自我注销：删除自己的账号并退出登录
+    function selfDeregister() {
+      if (currentUser.username === 'admin') return showToast('管理员账号不能注销', 'error');
+      if (!confirm('确定注销账号「' + currentUser.username + '」？此操作不可恢复，注销后将退出系统。')) return;
+
+      if (!isServerMode) {
+        accounts.value = accounts.value.filter(a => a.username !== currentUser.username);
+        showToast('账号已注销，正在退出...');
+        setTimeout(() => doLogout(), 1200);
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      fetch('/api/accounts/' + currentUser.username, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+      }).then(r => r.json()).then(data => {
+        if (data.error) { showToast(data.error, 'error'); return; }
+        showToast('账号已注销，正在退出...');
+        setTimeout(() => doLogout(), 1200);
+      }).catch(() => showToast('操作失败', 'error'));
+    }
+
     function openAccountModal(a) {
-      if (a) { editingAccount.value = a; Object.assign(accountForm, { username: a.username, password: '', empId: a.empId, roleName: a.roleName, enabled: a.enabled }); }
       else { editingAccount.value = null; Object.assign(accountForm, { username: '', password: '', empId: '', roleName: '', enabled: true }); }
       showAccountModal.value = true;
     }
@@ -1293,7 +1319,7 @@ createApp({
       showAccountModal, editingAccount, accountForm, openAccountModal, saveAccount, toggleAccount, resetPassword, deleteAccount,
       isAdminUser, currentUserAccount, availableRoles, getRoleLevel,
       canCreateAccount, canManageAccounts, canActOnAccount,
-      showSelfPasswordModal, selfPasswordForm, openSelfPasswordModal, saveSelfPassword,
+      showSelfPasswordModal, selfPasswordForm, openSelfPasswordModal, saveSelfPassword, selfDeregister,
       // Badges
       severityBadge, statusBadge, priorityBadge, reqStatusBadge
     };
