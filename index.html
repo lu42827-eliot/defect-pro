@@ -355,7 +355,7 @@ textarea.form-control{resize:vertical;min-height:80px}
             <div class="modal-body">
               <div class="form-group"><label>需求标题</label><input class="form-control" v-model="reqForm.title" placeholder="需求标题"></div>
               <div class="form-row"><div class="form-group"><label>优先级</label><select class="form-control" v-model="reqForm.priority"><option>低</option><option>中</option><option>高</option><option>紧急</option></select></div><div class="form-group"><label>状态</label><select class="form-control" v-model="reqForm.status"><option v-for="s in reqStatuses" :key="s">{{ s }}</option></select></div></div>
-              <div class="form-row"><div class="form-group"><label>所属版本</label><select class="form-control" v-model="reqForm.version"><option value="">请选择</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }} - {{ v.name }}</option></select></div><div class="form-group"><label>负责人</label><input type="text" class="form-control" v-model="reqForm.owner" placeholder="搜索人员..." list="reqOwnerList"><datalist id="reqOwnerList"><option value="">不指派</option><option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option></datalist></div></div>
+              <div class="form-row"><div class="form-group"><label>所属版本</label><select class="form-control" v-model="reqForm.version"><option value="">请选择</option><option v-for="v in versions" :key="v.version" :value="v.version">{{ v.version }} - {{ v.name }}</option></select></div><div class="form-group"><label>负责人</label><input type="text" class="form-control" :value="getPersonName(reqForm.owner) || '未指派'" @input="e => reqForm.owner = e.target.value === '未指派' ? '' : (activePersonnelMap[e.target.value] || '')" placeholder="搜索人员..." list="reqOwnerList"><datalist id="reqOwnerList"><option value="未指派">未指派</option><option v-for="p in activePersonnel" :key="p.empId">{{ p.name }}</option></datalist></div></div>
               <div class="form-group"><label>需求描述</label><textarea class="form-control" v-model="reqForm.description" placeholder="详细描述"></textarea></div>
             </div>
             <div class="modal-footer"><button class="btn btn-outline" @click="showReqModal=false">取消</button><button class="btn btn-primary" @click="saveReq">保存</button></div>
@@ -446,16 +446,18 @@ textarea.form-control{resize:vertical;min-height:80px}
               <div class="form-row">
                 <div class="form-group">
                   <label>指派给</label>
-                  <input type="text" class="form-control" v-model="defectForm.assignee" placeholder="搜索人员..." list="assigneeList">
+                  <input type="text" class="form-control" :value="getPersonName(defectForm.assignee) || '未指派'" @input="e => defectForm.assignee = activePersonnelMap[e.target.value] || ''" placeholder="搜索人员..." list="assigneeList">
                   <datalist id="assigneeList">
-                    <option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option>
+                    <option value="未指派">未指派</option>
+                    <option v-for="p in activePersonnel" :key="p.empId">{{ p.name }}</option>
                   </datalist>
                 </div>
                 <div class="form-group">
                   <label>创建人</label>
-                  <input type="text" class="form-control" v-model="defectForm.reporter" placeholder="搜索人员..." list="reporterList">
+                  <input type="text" class="form-control" :value="getPersonName(defectForm.reporter) || '未指派'" @input="e => defectForm.reporter = activePersonnelMap[e.target.value] || ''" placeholder="搜索人员..." list="reporterList">
                   <datalist id="reporterList">
-                    <option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option>
+                    <option value="未指派">未指派</option>
+                    <option v-for="p in activePersonnel" :key="p.empId">{{ p.name }}</option>
                   </datalist>
                 </div>
               </div>
@@ -511,10 +513,10 @@ textarea.form-control{resize:vertical;min-height:80px}
               </div>
               <div class="form-group">
                 <label>转派给</label>
-                <input type="text" class="form-control" v-model="defectActionForm.newAssignee" placeholder="搜索人员...（留空不变更）" list="actionAssigneeList">
+                <input type="text" class="form-control" :value="defectActionForm.newAssignee ? getPersonName(defectActionForm.newAssignee) : '不变更'" @input="e => defectActionForm.newAssignee = e.target.value === '不变更' ? '' : (activePersonnelMap[e.target.value] || '')" placeholder="搜索人员..." list="actionAssigneeList">
                 <datalist id="actionAssigneeList">
-                  <option value="">不变更</option>
-                  <option v-for="p in activePersonnel" :key="p.empId" :value="p.empId">{{ p.name }} ({{ p.empId }})</option>
+                  <option value="不变更">不变更</option>
+                  <option v-for="p in activePersonnel" :key="p.empId">{{ p.name }}</option>
                 </datalist>
               </div>
               <div class="form-group">
@@ -846,6 +848,13 @@ createApp({
     const personnelTotalPages = computed(() => Math.ceil(filteredPersonnel.value.length / pageSize) || 1);
     const paginatedPersonnel = computed(() => filteredPersonnel.value.slice((personnelPage.value - 1) * pageSize, personnelPage.value * pageSize));
     const activePersonnel = computed(() => personnel.value.filter(p => p.active));
+
+    // 人员名字→empId 映射（用于输入框搜索后快速转换）
+    const activePersonnelMap = computed(() => {
+      const map = { '未指派': '', '不变更': '' };
+      activePersonnel.value.forEach(p => { map[p.name] = p.empId; });
+      return map;
+    });
 
     function openPersonnelModal(p) {
       if (p) { editingPersonnel.value = p; Object.assign(personnelForm, p); }
@@ -1348,7 +1357,7 @@ createApp({
       // Roles
       roles, allPermissions, showRoleModal, editingRole, roleForm, openRoleModal, saveRole, deleteRole, getRoleName,
       // Personnel
-      personnel, personnelSearch, personnelPage, filteredPersonnel, paginatedPersonnel, personnelTotalPages, activePersonnel,
+      personnel, personnelSearch, personnelPage, filteredPersonnel, paginatedPersonnel, personnelTotalPages, activePersonnel, activePersonnelMap,
       showPersonnelModal, editingPersonnel, personnelForm, pageSize,
       openPersonnelModal, savePersonnel, deletePersonnel, getPersonName, getAccountForPerson,
       // Versions
