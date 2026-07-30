@@ -246,7 +246,22 @@ app.post('/api/defects', authMiddleware, (req, res) => {
   run('INSERT INTO defects (id,title,severity,status,version,relatedReq,assignee,reporter,description,createdAt,logs) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [id, title, severity || '一般', status || '新建', version || '', relatedReq || '', assignee || '', reporter || '', description || '', new Date().toISOString().split('T')[0], JSON.stringify(logs || [])]);
   res.json({ message: '创建成功' });
 });
-app.put('/api/defects/:id', authMiddleware, (req, res) => { const { title, severity, status, version, relatedReq, assignee, reporter, description, logs } = req.body; run('UPDATE defects SET title=?,severity=?,status=?,version=?,relatedReq=?,assignee=?,reporter=?,description=?,logs=? WHERE id=?', [title, severity, status, version || '', relatedReq || '', assignee || '', reporter || '', description || '', JSON.stringify(logs || []), req.params.id]); res.json({ message: '更新成功' }); });
+app.put('/api/defects/:id', authMiddleware, (req, res) => {
+  const { title, severity, status, version, relatedReq, assignee, reporter, description, logs } = req.body;
+  const defect = get('SELECT * FROM defects WHERE id=?', [req.params.id]);
+  if (!defect) return res.status(404).json({ error: '缺陷不存在' });
+
+  // 只有创建人才能修改严重程度
+  if (severity && severity !== defect.severity) {
+    if (defect.reporter !== req.user.empId) {
+      return res.status(403).json({ error: '只有创建人才能修改严重程度' });
+    }
+  }
+
+  run('UPDATE defects SET title=?,severity=?,status=?,version=?,relatedReq=?,assignee=?,reporter=?,description=?,logs=? WHERE id=?',
+    [title, severity || defect.severity, status || defect.status, version || '', relatedReq || '', assignee || '', reporter || '', description || '', JSON.stringify(logs || []), req.params.id]);
+  res.json({ message: '更新成功' });
+});
 app.delete('/api/defects/:id', authMiddleware, (req, res) => { run('DELETE FROM defects WHERE id=?', [req.params.id]); res.json({ message: '删除成功' }); });
 
 // ==================== Workflows ====================
