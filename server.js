@@ -323,6 +323,11 @@ app.put('/api/accounts/:username', authMiddleware, (req, res) => {
     return res.status(403).json({ error: '只能修改自己的账号信息，或由系统管理员操作' });
   }
 
+  // 修改他人密码：仅管理员可以
+  if (password && !isSelf && !isAdmin) {
+    return res.status(403).json({ error: '只有系统管理员才能重置他人密码' });
+  }
+
   // 非管理员不能修改角色
   if (!isAdmin && roleName) {
     return res.status(403).json({ error: '只有管理员才能修改账号角色' });

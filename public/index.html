@@ -563,9 +563,10 @@ textarea.form-control{resize:vertical;min-height:80px}
                     <button v-if="a.username===currentUser.username && a.username!=='admin'" class="btn btn-danger btn-sm" @click="selfDeregister()">注销账号</button>
                     <!-- 他人账号操作 -->
                     <template v-if="a.username!==currentUser.username">
-                      <!-- 有权限编辑的账号（级别1/2可见）：编辑、重置密码 -->
+                      <!-- 有权限编辑的账号（级别1/2可见）：编辑 -->
                       <button v-if="canActOnAccount(a.roleName)" class="btn btn-outline btn-sm" @click="openAccountModal(a)">编辑</button>
-                      <button v-if="canActOnAccount(a.roleName)" class="btn btn-info btn-sm" @click="resetPassword(a)">重置密码</button>
+                      <!-- 重置密码：仅管理员可重置他人密码 -->
+                      <button v-if="isAdminUser && a.username!=='admin'" class="btn btn-info btn-sm" @click="resetPassword(a)">重置密码</button>
                       <!-- 仅管理员：禁用/启用、删除 -->
                       <button v-if="isAdminUser && a.username!=='admin'" class="btn btn-sm" :class="a.enabled?'btn-warning':'btn-success'" @click="toggleAccount(a)">{{ a.enabled?'禁用':'启用' }}</button>
                       <button v-if="isAdminUser && a.username!=='admin'" class="btn btn-danger btn-sm" @click="deleteAccount(a.username)">删除</button>
@@ -1339,6 +1340,12 @@ createApp({
         }).catch(() => showToast('操作失败', 'error'));
     }
     function resetPassword(a) {
+      // 权限检查：只有管理员可以重置他人密码
+      if (!isAdminUser.value) {
+        showToast('只有系统管理员才能重置他人密码', 'error');
+        return;
+      }
+      if (a.username === 'admin') return showToast('不能重置管理员账号密码', 'error');
       const newPwd = prompt('请输入新密码：');
       if (!newPwd) return;
       if (newPwd.length < 6) return showToast('密码至少6位', 'error');
