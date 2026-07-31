@@ -74,7 +74,7 @@ async function initDb() {
   db.run(`CREATE TABLE IF NOT EXISTS requirements (id TEXT PRIMARY KEY, title TEXT NOT NULL, priority TEXT DEFAULT '中', status TEXT DEFAULT '待评审', version TEXT DEFAULT '', owner TEXT DEFAULT '', description TEXT DEFAULT '', logs TEXT DEFAULT '[]', createdAt TEXT DEFAULT '')`);
   db.run(`CREATE TABLE IF NOT EXISTS defects (id TEXT PRIMARY KEY, title TEXT NOT NULL, severity TEXT DEFAULT '一般', status TEXT DEFAULT '新建', version TEXT DEFAULT '', relatedReq TEXT DEFAULT '', assignee TEXT DEFAULT '', reporter TEXT DEFAULT '', description TEXT DEFAULT '', createdAt TEXT DEFAULT '', logs TEXT DEFAULT '[]')`);
   db.run(`CREATE TABLE IF NOT EXISTS workflows (id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT DEFAULT '缺陷', description TEXT DEFAULT '', steps TEXT DEFAULT '[]', transitions TEXT DEFAULT '[]')`);
-  db.run(`CREATE TABLE IF NOT EXISTS accounts (username TEXT PRIMARY KEY, password TEXT NOT NULL, empId TEXT DEFAULT '', roleName TEXT DEFAULT '', enabled INTEGER DEFAULT 1, createdAt TEXT DEFAULT '', lastLogin TEXT DEFAULT '')`);
+  db.run(`CREATE TABLE IF NOT EXISTS accounts (username TEXT PRIMARY KEY, password TEXT NOT NULL, empId TEXT DEFAULT '', roleName TEXT DEFAULT '', enabled INTEGER DEFAULT 1, createdAt TEXT DEFAULT '', lastLogin TEXT DEFAULT '', creator TEXT DEFAULT '', edit_count INTEGER DEFAULT 0)`);
 
   seedData();
   saveDb();
@@ -310,7 +310,7 @@ app.post('/api/accounts', authMiddleware, (req, res) => {
 
   const pe = validatePassword(password); if (pe) return res.status(400).json({ error: pe });
   if (get('SELECT username FROM accounts WHERE username=?', [username])) return res.status(400).json({ error: '用户名已存在' });
-  run('INSERT INTO accounts (username,password,empId,roleName,enabled,createdAt,lastLogin) VALUES (?,?,?,?,?,?,?)', [username, bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, new Date().toISOString().split('T')[0], '']);
+  run('INSERT INTO accounts (username,password,empId,roleName,enabled,createdAt,lastLogin,creator,edit_count) VALUES (?,?,?,?,?,?,?,?,?)', [username, bcrypt.hashSync(password, 10), empId || '', roleName || '', enabled !== false ? 1 : 0, new Date().toISOString().split('T')[0], '', req.user.username, 0]);
   res.json({ message: '创建成功' });
 });
 app.put('/api/accounts/:username', authMiddleware, (req, res) => {
@@ -351,6 +351,18 @@ app.put('/api/accounts/:username', authMiddleware, (req, res) => {
   const cur = get('SELECT * FROM accounts WHERE username=?', [req.params.username]);
   if (!cur) return res.status(404).json({ error: '账号不存在' });
 
+  // 编辑入口权限检查：非密码修改时，只有创建者可以编辑，且仅2次
+  if (!password && !isAdmin) {
+    // 非管理员编辑他人账号需要是创建者
+    if (!isSelf && cur.creator !== req.user.username) {
+      return res.status(403).json({ error: '只有创建者才能编辑此账号' });
+    }
+    // 创建者编辑次数限制：最多2次
+    if (cur.creator === req.user.username && cur.edit_count >= 2) {
+      return res.status(403).json({ error: '编辑次数已达上限（最多2次），无法继续编辑' });
+    }
+  }
+
   const newEmpId = empId !== undefined ? empId : cur.empId;
   const newRoleName = roleName !== undefined ? roleName : cur.roleName;
   const newEnabled = isAdmin && enabled !== undefined ? (enabled !== false ? 1 : 0) : cur.enabled;
@@ -360,7 +372,9 @@ app.put('/api/accounts/:username', authMiddleware, (req, res) => {
     if (pe) return res.status(400).json({ error: pe });
     run('UPDATE accounts SET password=?,empId=?,roleName=?,enabled=? WHERE username=?', [bcrypt.hashSync(password, 10), newEmpId, newRoleName, newEnabled, req.params.username]);
   } else {
-    run('UPDATE accounts SET empId=?,roleName=?,enabled=? WHERE username=?', [newEmpId, newRoleName, newEnabled, req.params.username]);
+    // 非密码修改时，递增编辑计数
+    const newEditCount = (cur.edit_count || 0) + 1;
+    run('UPDATE accounts SET empId=?,roleName=?,enabled=?,edit_count=? WHERE username=?', [newEmpId, newRoleName, newEnabled, newEditCount, req.params.username]);
   }
 
   res.json({ message: '更新成功' });

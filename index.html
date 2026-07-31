@@ -563,15 +563,15 @@ textarea.form-control{resize:vertical;min-height:80px}
                     <button v-if="a.username===currentUser.username && a.username!=='admin'" class="btn btn-danger btn-sm" @click="selfDeregister()">注销账号</button>
                     <!-- 他人账号操作 -->
                     <template v-if="a.username!==currentUser.username">
-                      <!-- 有权限编辑的账号（级别1/2可见）：编辑 -->
-                      <button v-if="canActOnAccount(a.roleName)" class="btn btn-outline btn-sm" @click="openAccountModal(a)">编辑</button>
+                      <!-- 编辑：仅创建者可见，且编辑次数<2 -->
+                      <button v-if="a.creator === currentUser.username && (a.edit_count || 0) < 2" class="btn btn-outline btn-sm" @click="openAccountModal(a)">编辑</button>
                       <!-- 重置密码：仅管理员可重置他人密码 -->
                       <button v-if="isAdminUser && a.username!=='admin'" class="btn btn-info btn-sm" @click="resetPassword(a)">重置密码</button>
                       <!-- 仅管理员：禁用/启用、删除 -->
                       <button v-if="isAdminUser && a.username!=='admin'" class="btn btn-sm" :class="a.enabled?'btn-warning':'btn-success'" @click="toggleAccount(a)">{{ a.enabled?'禁用':'启用' }}</button>
                       <button v-if="isAdminUser && a.username!=='admin'" class="btn btn-danger btn-sm" @click="deleteAccount(a.username)">删除</button>
                       <!-- 无法操作的高级别账号 -->
-                      <span v-if="!canActOnAccount(a.roleName) && !isAdminUser" style="color:var(--text2);font-size:12px;">无权操作</span>
+                      <span v-if="!isAdminUser && a.creator !== currentUser.username" style="color:var(--text2);font-size:12px;">无权操作</span>
                     </template>
                   </div></td>
                 </tr></tbody>
@@ -1301,7 +1301,7 @@ createApp({
         } else {
           if (!accountForm.password || accountForm.password.length < 6) return showToast('密码至少6位', 'error');
           if (accounts.value.find(a => a.username === accountForm.username)) return showToast('用户名已存在', 'error');
-          accounts.value.push({ username: accountForm.username, password: accountForm.password, empId: accountForm.empId, roleName: accountForm.roleName, enabled: true, createdAt: new Date().toISOString().split('T')[0], lastLogin: '' });
+          accounts.value.push({ username: accountForm.username, password: accountForm.password, empId: accountForm.empId, roleName: accountForm.roleName, enabled: true, createdAt: new Date().toISOString().split('T')[0], lastLogin: '', creator: currentUser.username, edit_count: 0 });
         }
         showAccountModal.value = false; showToast('账号保存成功'); return;
       }
@@ -1315,7 +1315,7 @@ createApp({
           .then(r => r.json()).then(data => {
             if (data.error) { showToast(data.error, 'error'); return; }
             const idx = accounts.value.findIndex(a => a.username === editingAccount.value.username);
-            if (idx >= 0) { accounts.value[idx].empId = accountForm.empId; accounts.value[idx].roleName = accountForm.roleName; accounts.value[idx].enabled = accountForm.enabled; }
+            if (idx >= 0) { accounts.value[idx].empId = accountForm.empId; accounts.value[idx].roleName = accountForm.roleName; accounts.value[idx].enabled = accountForm.enabled; accounts.value[idx].edit_count = (accounts.value[idx].edit_count || 0) + 1; }
             showAccountModal.value = false; showToast('账号已更新');
           }).catch(() => showToast('操作失败', 'error'));
       } else {
@@ -1323,7 +1323,7 @@ createApp({
         fetch('/api/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ username: accountForm.username, password: accountForm.password, empId: accountForm.empId, roleName: accountForm.roleName, enabled: true }) })
           .then(r => r.json()).then(data => {
             if (data.error) { showToast(data.error, 'error'); return; }
-            accounts.value.push({ username: accountForm.username, empId: accountForm.empId, roleName: accountForm.roleName, enabled: true, createdAt: new Date().toISOString().split('T')[0], lastLogin: '' });
+            accounts.value.push({ username: accountForm.username, empId: accountForm.empId, roleName: accountForm.roleName, enabled: true, createdAt: new Date().toISOString().split('T')[0], lastLogin: '', creator: currentUser.username, edit_count: 0 });
             showAccountModal.value = false; showToast('账号创建成功');
           }).catch(() => showToast('操作失败', 'error'));
       }
