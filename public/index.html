@@ -495,6 +495,10 @@ textarea.form-control{resize:vertical;min-height:80px}
                 <div><span style="color:var(--text2)">当前严重程度：</span><span :class="severityBadge(defectActionData.severity)">{{ defectActionData.severity }}</span></div>
                 <div style="grid-column:1/-1"><span style="color:var(--text2)">当前指派：</span><strong>{{ getPersonName(defectActionData.assignee) || '未指派' }}</strong></div>
               </div>
+              <!-- 权限检查提示 -->
+              <div v-if="!canOperateDefect(defectActionData)" style="padding:10px 12px;background:#fee2e2;border-left:3px solid #ef4444;color:#991b1b;border-radius:4px;margin-bottom:16px;font-size:13px;">
+                <strong>⚠️ 权限提示：</strong>只有创建人或被指派人才能进行流转和转派操作。
+              </div>
               <div class="form-row">
                 <div class="form-group">
                   <label>流转到状态</label>
@@ -513,18 +517,21 @@ textarea.form-control{resize:vertical;min-height:80px}
               </div>
               <div class="form-group">
                 <label>转派给</label>
-                <input type="text" class="form-control" :value="defectActionForm.newAssignee ? getPersonName(defectActionForm.newAssignee) : '不变更'" @input="e => defectActionForm.newAssignee = e.target.value === '不变更' ? '' : (activePersonnelMap[e.target.value] || '')" placeholder="搜索人员..." list="actionAssigneeList">
-                <datalist id="actionAssigneeList">
-                  <option value="不变更">不变更</option>
-                  <option v-for="p in activePersonnel" :key="p.empId">{{ p.name }}</option>
-                </datalist>
+                <div style="position:relative;display:flex;align-items:center">
+                  <input type="text" class="form-control" :value="defectActionForm.newAssignee ? getPersonName(defectActionForm.newAssignee) : '不变更'" @input="e => defectActionForm.newAssignee = e.target.value === '不变更' ? '' : (activePersonnelMap[e.target.value] || '')" placeholder="搜索人员..." list="actionAssigneeList" style="padding-right:32px">
+                  <span style="position:absolute;right:10px;pointer-events:none;color:var(--text2);font-size:14px">🔍</span>
+                  <datalist id="actionAssigneeList">
+                    <option value="不变更">不变更</option>
+                    <option v-for="p in activePersonnel" :key="p.empId">{{ p.name }}</option>
+                  </datalist>
+                </div>
               </div>
               <div class="form-group">
                 <label>备注说明</label>
                 <textarea class="form-control" v-model="defectActionForm.note" placeholder="说明处理原因（可选）"></textarea>
               </div>
             </div>
-            <div class="modal-footer"><button class="btn btn-outline" @click="showDefectActionModal=false">取消</button><button class="btn btn-primary" @click="confirmDefectAction">确认处理</button></div>
+            <div class="modal-footer"><button class="btn btn-outline" @click="showDefectActionModal=false">取消</button><button class="btn btn-primary" @click="confirmDefectAction" :disabled="!canOperateDefect(defectActionData)">确认处理</button></div>
           </div>
         </div>
       </div>
@@ -1057,6 +1064,12 @@ createApp({
     const defectDetail = ref({});
     const defectForm = reactive({ id: '', title: '', severity: '一般', status: '新建', version: '', relatedReq: '', assignee: '', reporter: '', description: '' });
 
+    // 判断当前用户是否可以操作缺陷（流转/转派）：创建人或被指派人
+    function canOperateDefect(defect) {
+      if (!currentUserEmpId.value) return false;
+      return defect.reporter === currentUserEmpId.value || defect.assignee === currentUserEmpId.value;
+    }
+
     function openDefectAction(d) {
       defectActionData.value = d;
       defectActionForm.newStatus = '';
@@ -1067,6 +1080,12 @@ createApp({
     }
 
     function confirmDefectAction() {
+      // 权限检查
+      if (!canOperateDefect(defectActionData.value)) {
+        showToast('权限不足：只有创建人或被指派人才能进行此操作', 'error');
+        return;
+      }
+
       const d = defects.value.find(d => d.id === defectActionData.value.id);
       if (!d) return;
       const changes = [];
@@ -1371,7 +1390,7 @@ createApp({
       // Defects
       defects, severityLevels, defectStatuses, defectSearch, defectFilterSeverity, defectFilterStatus, defectFilterVersion, filteredDefects, recentDefects,
       showDefectModal, showDefectDetailModal,
-      showDefectActionModal, defectActionData, defectActionForm, openDefectAction, confirmDefectAction,
+      showDefectActionModal, defectActionData, defectActionForm, openDefectAction, confirmDefectAction, canOperateDefect,
       editingDefect, defectForm, defectDetail,
       openDefectModal, saveDefect, deleteDefect, viewDefectDetail, getNextDefectStatuses,
       // Accounts
